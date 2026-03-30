@@ -34,7 +34,8 @@
                 "type": "radio",
                 "choices": {
                     "classique": "Classique",
-                    "mensuels": "Sur plusieurs mois"
+                    "mensuels": "Sur plusieurs mois",
+                    "rdv": "Rendez-vous"
                 },
                 "default_value": "classique",
                 "layout": "vertical"
