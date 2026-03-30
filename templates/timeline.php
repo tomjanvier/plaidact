@@ -1,6 +1,6 @@
 <?php
 
-use PlaidAct\AgendaTimeline\Plugin;
+use PlaidAct\AgendaSuite\Plugin;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -11,14 +11,14 @@ $title_override = $title_override ?? '';
 $years          = $data['years'] ?? [];
 $term           = $data['term'] ?? null;
 
-$title = $title_override ?: ( $term instanceof WP_Term ? $term->name : __( 'Agenda', 'plaidact-timeline' ) );
+$title = $title_override ?: ( $term instanceof WP_Term ? $term->name : __( 'Agenda', 'plaidact-breves-feed' ) );
 $slug  = $term instanceof WP_Term ? $term->slug : 'timeline';
 ?>
 <section class="pa-timeline" id="pa-timeline-<?php echo esc_attr( $slug ); ?>" aria-label="<?php echo esc_attr( $title ); ?>">
 	<h2 class="pa-timeline-title"><?php echo esc_html( $title ); ?></h2>
 
 	<?php if ( count( $years ) > 1 ) : ?>
-		<nav class="pa-years-nav" aria-label="<?php esc_attr_e( 'Navigation par année', 'plaidact-timeline' ); ?>">
+		<nav class="pa-years-nav" aria-label="<?php esc_attr_e( 'Navigation par année', 'plaidact-breves-feed' ); ?>">
 			<ul role="list">
 				<?php foreach ( $years as $year_data ) : ?>
 					<li><a href="#tl-<?php echo esc_attr( $slug . '-' . $year_data['year'] ); ?>"><?php echo esc_html( (string) $year_data['year'] ); ?></a></li>
