@@ -1,6 +1,6 @@
 <?php
 
-use PlaidAct\AgendaTimeline\Plugin;
+use PlaidAct\AgendaSuite\Plugin;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

@@ -10,18 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class PlaidAct_Breves_Feed {
-	/**
-	 * Singleton instance.
-	 *
-	 * @var PlaidAct_Breves_Feed|null
-	 */
 	private static ?PlaidAct_Breves_Feed $instance = null;
 
-	/**
-	 * Init singleton.
-	 *
-	 * @return PlaidAct_Breves_Feed
-	 */
 	public static function init(): PlaidAct_Breves_Feed {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
@@ -30,27 +20,40 @@ final class PlaidAct_Breves_Feed {
 		return self::$instance;
 	}
 
-	/**
-	 * Constructor.
-	 */
 	private function __construct() {
 		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
+		add_action( 'init', array( $this, 'register_breves_post_type' ), 1 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_shortcode( 'plaidact_breves', array( $this, 'render_shortcode' ) );
+		add_shortcode( 'plaidact_breves_latest_dropdown', array( $this, 'render_latest_dropdown_shortcode' ) );
+		add_shortcode( 'plaidact_breves_all', array( $this, 'render_all_breves_grid_shortcode' ) );
 		add_filter( 'template_include', array( $this, 'register_archive_template' ) );
 		add_filter( 'single_template', array( $this, 'register_single_template' ) );
 	}
 
-	/**
-	 * Load plugin translations.
-	 */
 	public function load_textdomain(): void {
 		load_plugin_textdomain( 'plaidact-breves-feed', false, dirname( plugin_basename( PLAIDACT_BREVES_FEED_FILE ) ) . '/languages' );
 	}
 
-	/**
-	 * Register plugin styles.
-	 */
+	public function register_breves_post_type(): void {
+		register_post_type(
+			'breves',
+			array(
+				'labels' => array(
+					'name'          => __( 'Brèves', 'plaidact-breves-feed' ),
+					'singular_name' => __( 'Brève', 'plaidact-breves-feed' ),
+					'menu_name'     => __( 'Brèves', 'plaidact-breves-feed' ),
+				),
+				'public'       => true,
+				'show_in_rest' => true,
+				'has_archive'  => 'breves',
+				'rewrite'      => array( 'slug' => 'breves', 'with_front' => false ),
+				'menu_icon'    => 'dashicons-megaphone',
+				'supports'     => array( 'title', 'editor', 'excerpt', 'thumbnail', 'author' ),
+			)
+		);
+	}
+
 	public function register_assets(): void {
 		wp_register_style(
 			'plaidact-breves-feed',
@@ -60,12 +63,6 @@ final class PlaidAct_Breves_Feed {
 		);
 	}
 
-	/**
-	 * Shortcode handler.
-	 *
-	 * @param array<string,string> $atts Shortcode attrs.
-	 * @return string
-	 */
 	public function render_shortcode( array $atts = array() ): string {
 		$atts = shortcode_atts(
 			array(
@@ -88,12 +85,75 @@ final class PlaidAct_Breves_Feed {
 		);
 	}
 
-	/**
-	 * Render breves feed HTML.
-	 *
-	 * @param array<string,mixed> $args Display args.
-	 * @return string
-	 */
+	public function render_latest_dropdown_shortcode(): string {
+		$query = new WP_Query(
+			array(
+				'post_type'              => 'breves',
+				'post_status'            => 'publish',
+				'posts_per_page'         => 20,
+				'orderby'                => 'date',
+				'order'                  => 'DESC',
+				'ignore_sticky_posts'    => true,
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			)
+		);
+
+		wp_enqueue_style( 'plaidact-breves-feed' );
+
+		ob_start();
+		$this->load_template(
+			'breves-latest-dropdown.php',
+			array(
+				'query' => $query,
+			)
+		);
+		wp_reset_postdata();
+		return (string) ob_get_clean();
+	}
+
+	public function render_all_breves_grid_shortcode( array $atts = array() ): string {
+		$atts = shortcode_atts(
+			array(
+				'posts_per_page' => '5',
+			),
+			$atts,
+			'plaidact_breves_all'
+		);
+
+		$paged = $this->get_current_page( 'breves_all_page' );
+
+		$query = new WP_Query(
+			array(
+				'post_type'              => 'breves',
+				'post_status'            => 'publish',
+				'posts_per_page'         => max( 1, absint( $atts['posts_per_page'] ) ),
+				'paged'                  => $paged,
+				'orderby'                => 'date',
+				'order'                  => 'DESC',
+				'ignore_sticky_posts'    => true,
+				'no_found_rows'          => false,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			)
+		);
+
+		wp_enqueue_style( 'plaidact-breves-feed' );
+
+		ob_start();
+		$this->load_template(
+			'breves-all-grid.php',
+			array(
+				'query' => $query,
+				'self'  => $this,
+				'paged' => $paged,
+			)
+		);
+		wp_reset_postdata();
+		return (string) ob_get_clean();
+	}
+
 	public function render_feed( array $args = array() ): string {
 		$defaults = array(
 			'posts_per_page' => 12,
@@ -136,12 +196,6 @@ final class PlaidAct_Breves_Feed {
 		return (string) ob_get_clean();
 	}
 
-	/**
-	 * Get normalized link data for one breve.
-	 *
-	 * @param int $post_id Post ID.
-	 * @return array<string,string|bool>
-	 */
 	public function get_link_data( int $post_id ): array {
 		$external = function_exists( 'get_field' ) ? (string) get_field( 'url_externe', $post_id ) : '';
 		$external = trim( $external );
@@ -163,13 +217,6 @@ final class PlaidAct_Breves_Feed {
 		);
 	}
 
-	/**
-	 * Build paginated links.
-	 *
-	 * @param WP_Query $query Query instance.
-	 * @param array<string,mixed> $args Render args.
-	 * @return string
-	 */
 	public function pagination( WP_Query $query, array $args ): string {
 		if ( $query->max_num_pages < 2 ) {
 			return '';
@@ -197,12 +244,6 @@ final class PlaidAct_Breves_Feed {
 		return is_string( $links ) ? $links : '';
 	}
 
-	/**
-	 * Template override for archive-breves.
-	 *
-	 * @param string $template Current template.
-	 * @return string
-	 */
 	public function register_archive_template( string $template ): string {
 		if ( is_post_type_archive( 'breves' ) ) {
 			$custom = locate_template( 'archive-breves.php' );
@@ -219,12 +260,6 @@ final class PlaidAct_Breves_Feed {
 		return $template;
 	}
 
-	/**
-	 * Template override for single breves.
-	 *
-	 * @param string $template Current template.
-	 * @return string
-	 */
 	public function register_single_template( string $template ): string {
 		if ( 'breves' === get_post_type() ) {
 			$custom = locate_template( 'single-breves.php' );
@@ -241,12 +276,6 @@ final class PlaidAct_Breves_Feed {
 		return $template;
 	}
 
-	/**
-	 * Load one template file.
-	 *
-	 * @param string               $template_name Template filename.
-	 * @param array<string,mixed>  $args Variables for template.
-	 */
 	public function load_template( string $template_name, array $args = array() ): void {
 		$theme_path = locate_template( 'plaidact-breves/' . $template_name );
 		$template   = $theme_path ? $theme_path : PLAIDACT_BREVES_FEED_PATH . 'templates/' . $template_name;
@@ -259,12 +288,6 @@ final class PlaidAct_Breves_Feed {
 		require $template;
 	}
 
-	/**
-	 * Current page helper.
-	 *
-	 * @param string $query_var Query variable.
-	 * @return int
-	 */
 	private function get_current_page( string $query_var = 'paged' ): int {
 		$page = absint( get_query_var( $query_var ) );
 
