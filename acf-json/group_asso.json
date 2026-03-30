@@ -4,22 +4,6 @@
     "title": "Associations",
     "fields": [
       {
-        "key": "field_68c95e43262fe",
-        "label": "Zone d'engagement",
-        "name": "zone_dengagement",
-        "type": "text"
-      },
-      {
-        "key": "field_68c960d6262ff",
-        "label": "Comment agir ?",
-        "name": "comment_agir",
-        "type": "wysiwyg",
-        "tabs": "all",
-        "toolbar": "full",
-        "media_upload": 1,
-        "delay": 0
-      },
-      {
         "key": "field_68c961ba26301",
         "label": "URL du site web",
         "name": "url_web",
@@ -104,6 +88,15 @@
         "label": "Réseau social : Bluesky",
         "name": "social_bluesky",
         "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_links_csv",
+        "label": "Réseaux sociaux (CSV)",
+        "name": "social_links_csv",
+        "type": "textarea",
+        "instructions": "Ajoutez un réseau par ligne avec le format reseau|url. Exemple : Mastodon|https:\/\/mastodon.social\/@compte",
+        "rows": 4,
+        "new_lines": ""
       }
     ],
     "location": [

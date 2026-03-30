@@ -17,7 +17,6 @@ get_header();
 				</div>
 				<div class="plaidact-asso-single__hero">
 					<h1><?php the_title(); ?></h1>
-					<?php if ( get_field( 'zone_dengagement' ) ) : ?><p class="plaidact-asso-badge"><?php echo esc_html( (string) get_field( 'zone_dengagement' ) ); ?></p><?php endif; ?>
 					<div class="plaidact-asso-tags">
 						<?php foreach ( ( get_the_terms( get_the_ID(), 'cause' ) ?: [] ) as $term ) : ?><span><?php echo esc_html( $term->name ); ?></span><?php endforeach; ?>
 					</div>
@@ -45,12 +44,6 @@ get_header();
 			<div class="plaidact-asso-single__content"><?php the_content(); ?></div>
 
 			<section class="plaidact-asso-single__meta-grid">
-				<?php if ( get_field( 'comment_agir' ) ) : ?>
-				<div>
-					<h2><?php esc_html_e( 'Comment agir ?', 'plaidact-breves-feed' ); ?></h2>
-					<?php echo wp_kses_post( (string) get_field( 'comment_agir' ) ); ?>
-				</div>
-				<?php endif; ?>
 				<div>
 					<h2><?php esc_html_e( 'Causes', 'plaidact-breves-feed' ); ?></h2>
 					<div class="plaidact-asso-tags">
