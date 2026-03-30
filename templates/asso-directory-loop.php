@@ -12,6 +12,10 @@ $query   = new WP_Query( Plugin::get_asso_query_args( $filters, $posts_per_page,
 $causes  = get_terms( [ 'taxonomy' => 'cause', 'hide_empty' => false ] );
 ?>
 <section class="plaidact-asso-directory" aria-label="<?php esc_attr_e( 'Répertoire des associations', 'plaidact-breves-feed' ); ?>">
+	<div class="plaidact-asso-directory__lead">
+		<h2><?php esc_html_e( 'Répertoire des associations', 'plaidact-breves-feed' ); ?></h2>
+		<p><?php esc_html_e( 'Trouvez une association par nom et par cause en quelques secondes.', 'plaidact-breves-feed' ); ?></p>
+	</div>
 	<form method="get" class="plaidact-asso-filters">
 		<div class="plaidact-asso-filter-grid">
 			<label>

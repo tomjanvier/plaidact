@@ -38,6 +38,72 @@
         "label": "URL donation / bénévolat",
         "name": "url_don",
         "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_facebook",
+        "label": "Réseau social : Facebook",
+        "name": "social_facebook",
+        "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_x",
+        "label": "Réseau social : X",
+        "name": "social_x",
+        "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_instagram",
+        "label": "Réseau social : Instagram",
+        "name": "social_instagram",
+        "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_linkedin",
+        "label": "Réseau social : Linkedin",
+        "name": "social_linkedin",
+        "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_youtube",
+        "label": "Réseau social : Youtube",
+        "name": "social_youtube",
+        "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_tiktok",
+        "label": "Réseau social : Tiktok",
+        "name": "social_tiktok",
+        "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_twitch",
+        "label": "Réseau social : Twitch",
+        "name": "social_twitch",
+        "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_whatsapp",
+        "label": "Réseau social : Whatsapp",
+        "name": "social_whatsapp",
+        "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_telegram",
+        "label": "Réseau social : Telegram",
+        "name": "social_telegram",
+        "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_discord",
+        "label": "Réseau social : Discord",
+        "name": "social_discord",
+        "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_social_bluesky",
+        "label": "Réseau social : Bluesky",
+        "name": "social_bluesky",
+        "type": "url"
       }
     ],
     "location": [
