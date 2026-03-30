@@ -28,8 +28,9 @@ final class Plugin {
 	];
 
 	public static function init(): void {
-		add_action( 'init', [ __CLASS__, 'register_taxonomy' ], 0 );
-		add_action( 'init', [ __CLASS__, 'register_asso_cpt_and_taxonomies' ], 1 );
+		add_action( 'init', [ __CLASS__, 'register_agenda_post_type' ], 0 );
+		add_action( 'init', [ __CLASS__, 'register_taxonomy' ], 1 );
+		add_action( 'init', [ __CLASS__, 'register_asso_cpt_and_taxonomies' ], 2 );
 		add_action( 'init', [ __CLASS__, 'register_blocks' ], 20 );
 		add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_assets' ] );
 		add_shortcode( 'plaidact_timeline', [ __CLASS__, 'timeline_shortcode' ] );
@@ -40,6 +41,25 @@ final class Plugin {
 		add_filter( 'template_include', [ __CLASS__, 'handle_page_template' ], 99 );
 		add_action( 'admin_menu', [ __CLASS__, 'register_asso_import_page' ] );
 		add_action( 'admin_post_plaidact_import_asso', [ __CLASS__, 'handle_asso_import' ] );
+	}
+
+	public static function register_agenda_post_type(): void {
+		register_post_type(
+			'agenda',
+			[
+				'labels' => [
+					'name'          => __( 'Agenda', 'plaidact-breves-feed' ),
+					'singular_name' => __( 'Événement', 'plaidact-breves-feed' ),
+					'menu_name'     => __( 'Agenda', 'plaidact-breves-feed' ),
+				],
+				'public'       => true,
+				'show_in_rest' => true,
+				'has_archive'  => 'agenda',
+				'rewrite'      => [ 'slug' => 'agenda', 'with_front' => false ],
+				'menu_icon'    => 'dashicons-calendar-alt',
+				'supports'     => [ 'title', 'editor', 'excerpt', 'thumbnail', 'author' ],
+			]
+		);
 	}
 
 	public static function register_taxonomy(): void {
