@@ -12,6 +12,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Plugin {
+	/** @var array<string,string> */
+	private const SOCIAL_NETWORKS = [
+		'facebook'  => 'Facebook',
+		'x'         => 'X',
+		'instagram' => 'Instagram',
+		'linkedin'  => 'LinkedIn',
+		'youtube'   => 'YouTube',
+		'tiktok'    => 'TikTok',
+		'twitch'    => 'Twitch',
+		'whatsapp'  => 'WhatsApp',
+		'telegram'  => 'Telegram',
+		'discord'   => 'Discord',
+		'bluesky'   => 'Bluesky',
+	];
+
 	public static function init(): void {
 		add_action( 'init', [ __CLASS__, 'register_taxonomy' ], 0 );
 		add_action( 'init', [ __CLASS__, 'register_asso_cpt_and_taxonomies' ], 1 );
@@ -23,6 +38,8 @@ final class Plugin {
 		add_filter( 'template_include', [ __CLASS__, 'maybe_use_plugin_templates' ] );
 		add_filter( 'theme_page_templates', [ __CLASS__, 'register_page_templates' ] );
 		add_filter( 'template_include', [ __CLASS__, 'handle_page_template' ], 99 );
+		add_action( 'admin_menu', [ __CLASS__, 'register_asso_import_page' ] );
+		add_action( 'admin_post_plaidact_import_asso', [ __CLASS__, 'handle_asso_import' ] );
 	}
 
 	public static function register_taxonomy(): void {
@@ -132,6 +149,82 @@ final class Plugin {
 				'posts_per_page' => isset( $attributes['postsToShow'] ) ? (string) absint( $attributes['postsToShow'] ) : '9',
 			]
 		);
+	}
+
+	public static function register_asso_import_page(): void {
+		add_submenu_page(
+			'edit.php?post_type=ong',
+			__( 'Import associations', 'plaidact-breves-feed' ),
+			__( 'Import CSV', 'plaidact-breves-feed' ),
+			'manage_options',
+			'plaidact-asso-import',
+			[ __CLASS__, 'render_asso_import_page' ]
+		);
+	}
+
+	public static function render_asso_import_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		$status = isset( $_GET['status'] ) ? sanitize_key( (string) $_GET['status'] ) : '';
+		$count  = isset( $_GET['count'] ) ? absint( $_GET['count'] ) : 0;
+		$error  = isset( $_GET['error'] ) ? sanitize_text_field( (string) $_GET['error'] ) : '';
+		$template_headers = implode( ',', self::get_asso_import_headers() );
+		$template_row = implode( ',', [
+			'ACAT France',
+			'acat-france',
+			'https://www.acatfrance.fr/logo.png',
+			'',
+			'https://www.acatfrance.fr',
+			'https://www.acatfrance.fr/faire-un-don',
+			'National',
+			'"Droits humains|Justice"',
+			'Texte court de présentation',
+			'https://facebook.com/acat',
+			'https://x.com/acat',
+			'https://instagram.com/acat',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+		] );
+		$template_csv = $template_headers . "\n" . $template_row;
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Import des associations', 'plaidact-breves-feed' ); ?></h1>
+			<?php if ( 'ok' === $status ) : ?>
+				<div class="notice notice-success"><p><?php echo esc_html( sprintf( __( '%d associations importées/mises à jour.', 'plaidact-breves-feed' ), $count ) ); ?></p></div>
+			<?php elseif ( 'error' === $status && '' !== $error ) : ?>
+				<div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div>
+			<?php endif; ?>
+
+			<p><?php esc_html_e( 'Importe un fichier CSV UTF-8. Un logo peut être fourni via une URL (logo_url) ou un ZIP de logos (colonne logo_file).', 'plaidact-breves-feed' ); ?></p>
+			<p>
+				<a class="button" href="data:text/csv;charset=utf-8,<?php echo rawurlencode( $template_csv ); ?>" download="modele-import-associations.csv">
+					<?php esc_html_e( 'Télécharger un modèle CSV', 'plaidact-breves-feed' ); ?>
+				</a>
+			</p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data">
+				<?php wp_nonce_field( 'plaidact_import_asso' ); ?>
+				<input type="hidden" name="action" value="plaidact_import_asso" />
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="plaidact_asso_csv"><?php esc_html_e( 'Fichier CSV', 'plaidact-breves-feed' ); ?></label></th>
+						<td><input id="plaidact_asso_csv" type="file" name="asso_csv" accept=".csv,text/csv" required /></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="plaidact_asso_zip"><?php esc_html_e( 'ZIP des logos (optionnel)', 'plaidact-breves-feed' ); ?></label></th>
+						<td><input id="plaidact_asso_zip" type="file" name="asso_logos_zip" accept=".zip,application/zip" /></td>
+					</tr>
+				</table>
+				<?php submit_button( __( 'Importer', 'plaidact-breves-feed' ) ); ?>
+			</form>
+		</div>
+		<?php
 	}
 
 	public static function enqueue_assets(): void {
@@ -289,6 +382,23 @@ final class Plugin {
 			'site_url'         => $site_url,
 			'cause_terms'      => get_the_terms( $post_id, 'cause' ) ?: [],
 		];
+	}
+
+	/** @return array<string,array{label:string,url:string,icon:string}> */
+	public static function get_asso_social_links( int $post_id ): array {
+		$links = [];
+		foreach ( self::SOCIAL_NETWORKS as $slug => $label ) {
+			$url = trim( (string) get_field( 'social_' . $slug, $post_id ) );
+			if ( '' === $url ) {
+				continue;
+			}
+			$links[ $slug ] = [
+				'label' => $label,
+				'url'   => $url,
+				'icon'  => 'https://cdn.simpleicons.org/' . rawurlencode( $slug ) . '/2A1738',
+			];
+		}
+		return $links;
 	}
 
 	/** @return array<int,array{post_id:int,title:string,permalink:string}> */
@@ -499,5 +609,221 @@ final class Plugin {
 		}
 		extract( $vars, EXTR_SKIP );
 		require $file;
+	}
+
+	/** @return string[] */
+	private static function get_asso_import_headers(): array {
+		return [
+			'title',
+			'slug',
+			'logo_url',
+			'logo_file',
+			'url_web',
+			'url_don',
+			'zone_dengagement',
+			'causes',
+			'resume_court',
+			'social_facebook',
+			'social_x',
+			'social_instagram',
+			'social_linkedin',
+			'social_youtube',
+			'social_tiktok',
+			'social_twitch',
+			'social_whatsapp',
+			'social_telegram',
+			'social_discord',
+			'social_bluesky',
+		];
+	}
+
+	public static function handle_asso_import(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Accès refusé.', 'plaidact-breves-feed' ) );
+		}
+		check_admin_referer( 'plaidact_import_asso' );
+		if ( empty( $_FILES['asso_csv']['tmp_name'] ) ) {
+			self::redirect_import_error( __( 'CSV manquant.', 'plaidact-breves-feed' ) );
+		}
+
+		$logos_map = self::extract_logos_zip( $_FILES['asso_logos_zip'] ?? null );
+		$handle = fopen( (string) $_FILES['asso_csv']['tmp_name'], 'rb' );
+		if ( false === $handle ) {
+			self::redirect_import_error( __( 'Impossible de lire le CSV.', 'plaidact-breves-feed' ) );
+		}
+
+		$first_line = (string) fgets( $handle );
+		rewind( $handle );
+		$delimiter = substr_count( $first_line, ';' ) > substr_count( $first_line, ',' ) ? ';' : ',';
+		$headers = fgetcsv( $handle, 0, $delimiter );
+		if ( ! is_array( $headers ) ) {
+			fclose( $handle );
+			self::redirect_import_error( __( 'CSV invalide.', 'plaidact-breves-feed' ) );
+		}
+		$headers = array_map( static fn( $h ) => sanitize_key( (string) $h ), $headers );
+
+		$count = 0;
+		while ( ( $row = fgetcsv( $handle, 0, $delimiter ) ) !== false ) {
+			$data = [];
+			foreach ( $headers as $index => $header ) {
+				$data[ $header ] = isset( $row[ $index ] ) ? trim( (string) $row[ $index ] ) : '';
+			}
+			$title = $data['title'] ?? '';
+			if ( '' === $title ) {
+				continue;
+			}
+
+			$post_id = self::upsert_asso_post( $data );
+			if ( $post_id <= 0 ) {
+				continue;
+			}
+			self::sync_asso_meta( $post_id, $data );
+			self::sync_asso_causes( $post_id, (string) ( $data['causes'] ?? '' ) );
+			self::sync_asso_logo( $post_id, $data, $logos_map );
+			$count++;
+		}
+		fclose( $handle );
+
+		wp_safe_redirect(
+			add_query_arg(
+				[
+					'post_type' => 'ong',
+					'page'      => 'plaidact-asso-import',
+					'status'    => 'ok',
+					'count'     => $count,
+				],
+				admin_url( 'edit.php' )
+			)
+		);
+		exit;
+	}
+
+	private static function redirect_import_error( string $message ): void {
+		wp_safe_redirect(
+			add_query_arg(
+				[
+					'post_type' => 'ong',
+					'page'      => 'plaidact-asso-import',
+					'status'    => 'error',
+					'error'     => $message,
+				],
+				admin_url( 'edit.php' )
+			)
+		);
+		exit;
+	}
+
+	/** @param array<string,string> $data */
+	private static function upsert_asso_post( array $data ): int {
+		$slug = sanitize_title( (string) ( $data['slug'] ?? '' ) );
+		$post = null;
+		if ( '' !== $slug ) {
+			$post = get_page_by_path( $slug, OBJECT, 'ong' );
+		}
+
+		$postarr = [
+			'post_type'   => 'ong',
+			'post_status' => 'publish',
+			'post_title'  => sanitize_text_field( (string) $data['title'] ),
+			'post_content'=> '',
+		];
+		if ( $post instanceof WP_Post ) {
+			$postarr['ID'] = $post->ID;
+			return (int) wp_update_post( $postarr );
+		}
+		if ( '' !== $slug ) {
+			$postarr['post_name'] = $slug;
+		}
+		return (int) wp_insert_post( $postarr );
+	}
+
+	/** @param array<string,string> $data */
+	private static function sync_asso_meta( int $post_id, array $data ): void {
+		$meta_keys = [ 'url_web', 'url_don', 'zone_dengagement', 'resume_court' ];
+		foreach ( $meta_keys as $key ) {
+			if ( isset( $data[ $key ] ) ) {
+				update_field( $key, $data[ $key ], $post_id );
+			}
+		}
+
+		foreach ( self::SOCIAL_NETWORKS as $slug => $_label ) {
+			$key = 'social_' . $slug;
+			if ( isset( $data[ $key ] ) ) {
+				update_field( $key, $data[ $key ], $post_id );
+			}
+		}
+	}
+
+	private static function sync_asso_causes( int $post_id, string $causes_raw ): void {
+		if ( '' === $causes_raw ) {
+			return;
+		}
+		$names = array_filter( array_map( 'trim', explode( '|', $causes_raw ) ) );
+		if ( empty( $names ) ) {
+			return;
+		}
+		$term_ids = [];
+		foreach ( $names as $name ) {
+			$term = term_exists( $name, 'cause' );
+			if ( ! $term ) {
+				$term = wp_insert_term( $name, 'cause' );
+			}
+			if ( is_array( $term ) && isset( $term['term_id'] ) ) {
+				$term_ids[] = (int) $term['term_id'];
+			}
+		}
+		if ( ! empty( $term_ids ) ) {
+			wp_set_object_terms( $post_id, $term_ids, 'cause', false );
+		}
+	}
+
+	/** @param array<string,string> $data @param array<string,string> $logos_map */
+	private static function sync_asso_logo( int $post_id, array $data, array $logos_map ): void {
+		$logo_url = trim( (string) ( $data['logo_url'] ?? '' ) );
+		$logo_file = trim( (string) ( $data['logo_file'] ?? '' ) );
+		$source = $logo_url;
+		if ( '' === $source && '' !== $logo_file && isset( $logos_map[ $logo_file ] ) ) {
+			$source = $logos_map[ $logo_file ];
+		}
+		if ( '' === $source ) {
+			return;
+		}
+		if ( ! function_exists( 'media_sideload_image' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+		}
+		$attachment_id = media_sideload_image( esc_url_raw( $source ), $post_id, null, 'id' );
+		if ( ! is_wp_error( $attachment_id ) ) {
+			set_post_thumbnail( $post_id, (int) $attachment_id );
+		}
+	}
+
+	/** @param array<string,mixed>|null $zip_file @return array<string,string> */
+	private static function extract_logos_zip( ?array $zip_file ): array {
+		if ( empty( $zip_file['tmp_name'] ) || ! class_exists( 'ZipArchive' ) ) {
+			return [];
+		}
+		$zip = new \ZipArchive();
+		if ( true !== $zip->open( (string) $zip_file['tmp_name'] ) ) {
+			return [];
+		}
+		$upload = wp_upload_dir();
+		$base_dir = trailingslashit( $upload['basedir'] ) . 'plaidact-import-logos-' . time();
+		wp_mkdir_p( $base_dir );
+		$zip->extractTo( $base_dir );
+		$zip->close();
+
+		$map = [];
+		$files = glob( $base_dir . '/*' );
+		if ( ! is_array( $files ) ) {
+			return [];
+		}
+		foreach ( $files as $file ) {
+			if ( is_file( $file ) ) {
+				$map[ basename( $file ) ] = trailingslashit( $upload['baseurl'] ) . basename( $base_dir ) . '/' . rawurlencode( basename( $file ) );
+			}
+		}
+		return $map;
 	}
 }

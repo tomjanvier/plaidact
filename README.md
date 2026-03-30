@@ -18,6 +18,8 @@ Plugin WordPress unifié pour :
   - `plaidact/asso-cause-list`
 - Timeline : passé + présent + futur, gestion des événements mensuels sur plusieurs mois.
 - Répertoire Asso : filtre par cause, archive/single/templates dédiés.
+- Fiche association : résumé, boutons site web/don, réseaux sociaux (top 10 + Bluesky).
+- Back-office : import CSV (création/mise à jour) avec support logo via URL ou ZIP de logos.
 - Taxonomies supprimées : `odd` et `forme_engagement`.
 
 ## Installation
@@ -28,3 +30,14 @@ Plugin WordPress unifié pour :
    - `acf-json/group_691c873303106.json` (brèves)
    - `acf-json/group_67d05232b5b56.json` (agenda)
    - `acf-json/group_asso.json` (associations)
+
+## Import associations (back-office)
+1. Aller dans **Répertoire Asso > Import CSV**.
+2. Télécharger le modèle CSV depuis l’écran.
+3. Colonnes principales :
+   - `title`, `slug`
+   - `logo_url` (URL du logo) **ou** `logo_file` (nom du fichier dans un ZIP uploadé)
+   - `url_web`, `url_don`, `zone_dengagement`, `resume_court`
+   - `causes` (séparées par `|`)
+   - `social_*` (facebook, x, instagram, linkedin, youtube, tiktok, twitch, whatsapp, telegram, discord, bluesky)
+4. Importer le CSV, et (optionnel) un ZIP contenant les logos.
