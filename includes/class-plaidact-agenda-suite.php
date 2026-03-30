@@ -177,7 +177,6 @@ final class Plugin {
 			'',
 			'https://www.acatfrance.fr',
 			'https://www.acatfrance.fr/faire-un-don',
-			'National',
 			'"Droits humains|Justice"',
 			'Texte court de présentation',
 			'https://facebook.com/acat',
@@ -191,6 +190,8 @@ final class Plugin {
 			'',
 			'',
 			'',
+			'"Mastodon|https://mastodon.social/@acat
+Linktree|https://linktr.ee/acat"',
 		] );
 		$template_csv = $template_headers . "\n" . $template_row;
 		?>
@@ -377,7 +378,6 @@ final class Plugin {
 			'post_id'          => $post_id,
 			'title'            => get_the_title( $post_id ),
 			'permalink'        => get_permalink( $post_id ),
-			'zone_dengagement' => (string) get_field( 'zone_dengagement', $post_id ),
 			'excerpt'          => wp_trim_words( $excerpt, 24, '…' ),
 			'site_url'         => $site_url,
 			'cause_terms'      => get_the_terms( $post_id, 'cause' ) ?: [],
@@ -396,6 +396,16 @@ final class Plugin {
 				'label' => $label,
 				'url'   => $url,
 				'icon'  => 'https://cdn.simpleicons.org/' . rawurlencode( $slug ) . '/2A1738',
+			];
+		}
+		$custom_socials = self::parse_social_links_csv( (string) get_field( 'social_links_csv', $post_id ) );
+		foreach ( $custom_socials as $custom ) {
+			$slug = sanitize_title( (string) $custom['label'] );
+			$key  = '' !== $slug ? $slug : md5( (string) $custom['url'] );
+			$links[ $key ] = [
+				'label' => (string) $custom['label'],
+				'url'   => (string) $custom['url'],
+				'icon'  => 'https://cdn.simpleicons.org/' . rawurlencode( $key ) . '/2A1738',
 			];
 		}
 		return $links;
@@ -620,7 +630,6 @@ final class Plugin {
 			'logo_file',
 			'url_web',
 			'url_don',
-			'zone_dengagement',
 			'causes',
 			'resume_court',
 			'social_facebook',
@@ -634,6 +643,7 @@ final class Plugin {
 			'social_telegram',
 			'social_discord',
 			'social_bluesky',
+			'social_links_csv',
 		];
 	}
 
@@ -739,7 +749,7 @@ final class Plugin {
 
 	/** @param array<string,string> $data */
 	private static function sync_asso_meta( int $post_id, array $data ): void {
-		$meta_keys = [ 'url_web', 'url_don', 'zone_dengagement', 'resume_court' ];
+		$meta_keys = [ 'url_web', 'url_don', 'resume_court', 'social_links_csv' ];
 		foreach ( $meta_keys as $key ) {
 			if ( isset( $data[ $key ] ) ) {
 				update_field( $key, $data[ $key ], $post_id );
@@ -752,6 +762,32 @@ final class Plugin {
 				update_field( $key, $data[ $key ], $post_id );
 			}
 		}
+	}
+
+	/** @return array<int,array{label:string,url:string}> */
+	private static function parse_social_links_csv( string $raw ): array {
+		$entries = preg_split( '/\r\n|\r|\n/', trim( $raw ) );
+		if ( ! is_array( $entries ) ) {
+			return [];
+		}
+		$parsed = [];
+		foreach ( $entries as $entry ) {
+			if ( '' === trim( $entry ) ) {
+				continue;
+			}
+			$parts = array_map( 'trim', explode( '|', $entry, 2 ) );
+			if ( 2 !== count( $parts ) ) {
+				continue;
+			}
+			if ( '' === $parts[0] || '' === $parts[1] ) {
+				continue;
+			}
+			$parsed[] = [
+				'label' => $parts[0],
+				'url'   => $parts[1],
+			];
+		}
+		return $parsed;
 	}
 
 	private static function sync_asso_causes( int $post_id, string $causes_raw ): void {

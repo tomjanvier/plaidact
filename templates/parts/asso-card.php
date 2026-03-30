@@ -16,9 +16,6 @@ $card = $card ?? [];
 	</a>
 	<div class="plaidact-asso-card__body">
 		<h3><a href="<?php echo esc_url( (string) $card['permalink'] ); ?>"><?php echo esc_html( (string) $card['title'] ); ?></a></h3>
-		<?php if ( ! empty( $card['zone_dengagement'] ) ) : ?>
-			<p class="plaidact-asso-badge"><?php echo esc_html( (string) $card['zone_dengagement'] ); ?></p>
-		<?php endif; ?>
 		<?php if ( ! empty( $card['excerpt'] ) ) : ?>
 			<p class="plaidact-asso-card__excerpt"><?php echo esc_html( (string) $card['excerpt'] ); ?></p>
 		<?php endif; ?>
