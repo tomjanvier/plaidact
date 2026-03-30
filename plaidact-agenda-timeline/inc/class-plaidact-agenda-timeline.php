@@ -1,0 +1,473 @@
+<?php
+
+namespace PlaidAct\AgendaTimeline;
+
+use DateTimeImmutable;
+use WP_Post;
+use WP_Query;
+use WP_Term;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+final class Plugin {
+	public static function init(): void {
+		add_action( 'init', [ __CLASS__, 'register_taxonomy' ], 0 );
+		add_action( 'init', [ __CLASS__, 'register_ong_cpt_and_taxonomies' ], 1 );
+		add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_assets' ] );
+		add_shortcode( 'plaidact_timeline', [ __CLASS__, 'shortcode' ] );
+		add_shortcode( 'plaidact_ong_directory', [ __CLASS__, 'ong_directory_shortcode' ] );
+		add_filter( 'template_include', [ __CLASS__, 'maybe_use_plugin_templates' ] );
+		add_filter( 'theme_page_templates', [ __CLASS__, 'register_page_templates' ] );
+		add_filter( 'template_include', [ __CLASS__, 'handle_page_template' ], 99 );
+	}
+
+	public static function register_taxonomy(): void {
+		register_taxonomy(
+			'agenda_timeline',
+			[ 'agenda' ],
+			[
+				'labels' => [
+					'name'          => _x( 'Timelines Agenda', 'taxonomy general name', 'plaidact-timeline' ),
+					'singular_name' => _x( 'Timeline Agenda', 'taxonomy singular name', 'plaidact-timeline' ),
+					'menu_name'     => __( 'Timelines', 'plaidact-timeline' ),
+				],
+				'public'            => true,
+				'hierarchical'      => true,
+				'show_in_rest'      => true,
+				'show_admin_column' => true,
+				'rewrite'           => [
+					'slug'       => 'agenda-timeline',
+					'with_front' => false,
+				],
+			]
+		);
+	}
+
+	public static function register_ong_cpt_and_taxonomies(): void {
+		register_post_type(
+			'ong',
+			[
+				'labels' => [
+					'name'          => __( 'ONG', 'plaidact-timeline' ),
+					'singular_name' => __( 'ONG', 'plaidact-timeline' ),
+					'menu_name'     => __( 'Répertoire ONG', 'plaidact-timeline' ),
+				],
+				'public'             => true,
+				'has_archive'        => true,
+				'rewrite'            => [ 'slug' => 'ong', 'with_front' => false ],
+				'show_in_rest'       => true,
+				'menu_icon'          => 'dashicons-groups',
+				'supports'           => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
+				'publicly_queryable' => true,
+			]
+		);
+
+		self::register_ong_taxonomy(
+			'cause',
+			__( 'Causes', 'plaidact-timeline' ),
+			__( 'Cause', 'plaidact-timeline' ),
+			'cause'
+		);
+		self::register_ong_taxonomy(
+			'forme_engagement',
+			__( 'Formes d’engagement', 'plaidact-timeline' ),
+			__( 'Forme d’engagement', 'plaidact-timeline' ),
+			'forme-engagement'
+		);
+		self::register_ong_taxonomy(
+			'odd',
+			__( 'ODD', 'plaidact-timeline' ),
+			__( 'ODD', 'plaidact-timeline' ),
+			'odd'
+		);
+	}
+
+	private static function register_ong_taxonomy( string $taxonomy, string $plural, string $single, string $slug ): void {
+		register_taxonomy(
+			$taxonomy,
+			[ 'ong' ],
+			[
+				'labels' => [
+					'name'          => $plural,
+					'singular_name' => $single,
+				],
+				'public'            => true,
+				'hierarchical'      => true,
+				'show_in_rest'      => true,
+				'show_admin_column' => true,
+				'rewrite'           => [
+					'slug'       => $slug,
+					'with_front' => false,
+				],
+			]
+		);
+	}
+
+	public static function enqueue_assets(): void {
+		global $post;
+		$load_timeline = is_tax( 'agenda_timeline' );
+		$load_ong      = is_post_type_archive( 'ong' ) || is_singular( 'ong' );
+
+		if ( $post instanceof WP_Post ) {
+			$load_timeline = $load_timeline || has_shortcode( $post->post_content, 'plaidact_timeline' );
+			$load_ong      = $load_ong || has_shortcode( $post->post_content, 'plaidact_ong_directory' );
+		}
+
+		if ( $load_timeline ) {
+			wp_enqueue_style( 'plaidact-agenda-timeline', PLAIDACT_TIMELINE_URL . 'assets/css/agenda-timeline.css', [], PLAIDACT_TIMELINE_VERSION );
+			wp_enqueue_script( 'plaidact-agenda-timeline', PLAIDACT_TIMELINE_URL . 'assets/js/agenda-timeline.js', [], PLAIDACT_TIMELINE_VERSION, true );
+		}
+
+		if ( $load_ong ) {
+			wp_enqueue_style( 'plaidact-ong-directory', PLAIDACT_TIMELINE_URL . 'assets/css/ong-directory.css', [], PLAIDACT_TIMELINE_VERSION );
+		}
+	}
+
+	public static function register_page_templates( array $templates ): array {
+		$templates['plaidact-ong-directory-template.php'] = __( 'Répertoire des ONG (PlaidAct)', 'plaidact-timeline' );
+		return $templates;
+	}
+
+	public static function handle_page_template( string $template ): string {
+		if ( ! is_singular( 'page' ) ) {
+			return $template;
+		}
+
+		$page_template = get_page_template_slug();
+		if ( 'plaidact-ong-directory-template.php' === $page_template ) {
+			return PLAIDACT_TIMELINE_PATH . 'templates/page-repertoire-ong.php';
+		}
+
+		return $template;
+	}
+
+	public static function maybe_use_plugin_templates( string $template ): string {
+		if ( is_tax( 'agenda_timeline' ) ) {
+			return PLAIDACT_TIMELINE_PATH . 'templates/taxonomy-agenda_timeline.php';
+		}
+		if ( is_post_type_archive( 'ong' ) ) {
+			return PLAIDACT_TIMELINE_PATH . 'templates/archive-ong.php';
+		}
+		if ( is_singular( 'ong' ) ) {
+			return PLAIDACT_TIMELINE_PATH . 'templates/single-ong.php';
+		}
+
+		return $template;
+	}
+
+	public static function ong_directory_shortcode( array $atts ): string {
+		$atts = shortcode_atts(
+			[
+				'posts_per_page' => 9,
+			],
+			$atts,
+			'plaidact_ong_directory'
+		);
+
+		ob_start();
+		self::render_template(
+			'ong-directory-loop.php',
+			[
+				'posts_per_page' => max( 1, absint( $atts['posts_per_page'] ) ),
+				'is_shortcode'   => true,
+			]
+		);
+		return (string) ob_get_clean();
+	}
+
+	public static function shortcode( array $atts ): string {
+		$atts = shortcode_atts(
+			[
+				'term'  => '',
+				'title' => '',
+			],
+			$atts,
+			'plaidact_timeline'
+		);
+
+		$term_slug = sanitize_title( (string) $atts['term'] );
+		if ( '' === $term_slug ) {
+			return '<p class="pa-timeline-error">' . esc_html__( 'Shortcode [plaidact_timeline] : paramètre "term" manquant.', 'plaidact-timeline' ) . '</p>';
+		}
+
+		$payload = self::build_timeline_data( $term_slug );
+		if ( empty( $payload['years'] ) ) {
+			return '<p class="pa-timeline-empty">' . esc_html__( 'Aucun événement à afficher pour cette timeline.', 'plaidact-timeline' ) . '</p>';
+		}
+
+		ob_start();
+		self::render_template(
+			'timeline.php',
+			[
+				'data'           => $payload,
+				'title_override' => sanitize_text_field( (string) $atts['title'] ),
+			]
+		);
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * @return array<string,mixed>
+	 */
+	public static function get_ong_filters_from_request(): array {
+		return [
+			's'                => isset( $_GET['ong_s'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['ong_s'] ) ) : '',
+			'cause'            => isset( $_GET['ong_cause'] ) ? sanitize_title( wp_unslash( (string) $_GET['ong_cause'] ) ) : '',
+			'forme_engagement' => isset( $_GET['ong_forme_engagement'] ) ? sanitize_title( wp_unslash( (string) $_GET['ong_forme_engagement'] ) ) : '',
+			'paged'            => max( 1, get_query_var( 'paged' ) ? absint( get_query_var( 'paged' ) ) : ( isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1 ) ),
+		];
+	}
+
+	/**
+	 * @param array<string,mixed> $filters
+	 */
+	public static function get_ong_query_args( array $filters, int $posts_per_page = 9 ): array {
+		$args = [
+			'post_type'      => 'ong',
+			'post_status'    => 'publish',
+			'posts_per_page' => $posts_per_page,
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+			'paged'          => (int) $filters['paged'],
+			's'              => (string) $filters['s'],
+		];
+
+		$tax_query = [];
+		if ( ! empty( $filters['cause'] ) ) {
+			$tax_query[] = [
+				'taxonomy' => 'cause',
+				'field'    => 'slug',
+				'terms'    => (string) $filters['cause'],
+			];
+		}
+		if ( ! empty( $filters['forme_engagement'] ) ) {
+			$tax_query[] = [
+				'taxonomy' => 'forme_engagement',
+				'field'    => 'slug',
+				'terms'    => (string) $filters['forme_engagement'],
+			];
+		}
+		if ( ! empty( $tax_query ) ) {
+			$args['tax_query'] = $tax_query;
+		}
+
+		return $args;
+	}
+
+	/**
+	 * @return array<string,mixed>
+	 */
+	public static function get_ong_card_data( int $post_id ): array {
+		$site_url = trim( (string) get_field( 'url_web', $post_id ) );
+		$excerpt  = trim( (string) get_field( 'resume_court', $post_id ) );
+		if ( '' === $excerpt ) {
+			$excerpt = wp_strip_all_tags( get_the_excerpt( $post_id ) );
+		}
+		return [
+			'post_id'            => $post_id,
+			'title'              => get_the_title( $post_id ),
+			'permalink'          => get_permalink( $post_id ),
+			'zone_dengagement'   => (string) get_field( 'zone_dengagement', $post_id ),
+			'excerpt'            => wp_trim_words( $excerpt, 24, '…' ),
+			'site_url'           => $site_url,
+			'cause_terms'        => get_the_terms( $post_id, 'cause' ) ?: [],
+			'forme_terms'        => get_the_terms( $post_id, 'forme_engagement' ) ?: [],
+		];
+	}
+
+	/**
+	 * @return array<int,array{post_id:int,title:string,permalink:string}>
+	 */
+	public static function get_similar_ong( int $post_id, int $limit = 3 ): array {
+		$terms = get_the_terms( $post_id, 'cause' );
+		if ( ! $terms || is_wp_error( $terms ) ) {
+			return [];
+		}
+		$term_ids = wp_list_pluck( $terms, 'term_id' );
+		$query    = new WP_Query(
+			[
+				'post_type'      => 'ong',
+				'post_status'    => 'publish',
+				'posts_per_page' => $limit,
+				'post__not_in'   => [ $post_id ],
+				'orderby'        => 'rand',
+				'tax_query'      => [
+					[
+						'taxonomy' => 'cause',
+						'field'    => 'term_id',
+						'terms'    => $term_ids,
+					],
+				],
+			]
+		);
+		$items    = [];
+		while ( $query->have_posts() ) {
+			$query->the_post();
+			$items[] = [
+				'post_id'   => get_the_ID(),
+				'title'     => get_the_title(),
+				'permalink' => get_the_permalink(),
+			];
+		}
+		wp_reset_postdata();
+
+		return $items;
+	}
+
+	/**
+	 * @return array{years: array<int,array{year:int,months:array<int,array{month:int,month_name:string,events:array}>}>, term: WP_Term|null}
+	 */
+	public static function build_timeline_data( string $term_slug ): array {
+		$term = get_term_by( 'slug', $term_slug, 'agenda_timeline' );
+
+		$query = new WP_Query(
+			[
+				'post_type'      => 'agenda',
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'meta_key'       => 'date_debut',
+				'orderby'        => 'meta_value',
+				'order'          => 'ASC',
+				'no_found_rows'  => true,
+				'tax_query'      => [
+					[
+						'taxonomy' => 'agenda_timeline',
+						'field'    => 'slug',
+						'terms'    => $term_slug,
+					],
+				],
+			]
+		);
+
+		$events = [];
+		while ( $query->have_posts() ) {
+			$query->the_post();
+			$post_id = get_the_ID();
+
+			$start = self::parse_acf_date( (string) get_post_meta( $post_id, 'date_debut', true ) );
+			if ( ! $start ) {
+				continue;
+			}
+			$end = self::parse_acf_date( (string) get_post_meta( $post_id, 'date_fin', true ) );
+			$config = get_field( 'configuration', $post_id );
+
+			$external_link = (string) get_field( 'lien_evenement', $post_id );
+
+			$events[] = [
+				'id'          => $post_id,
+				'title'       => get_the_title(),
+				'date_debut'  => $start,
+				'date_fin'    => $end,
+				'type'        => (string) get_post_meta( $post_id, 'type_evenement', true ),
+				'config'      => is_array( $config ) ? $config : [],
+				'lieu'        => (string) get_post_meta( $post_id, 'lieu', true ),
+				'mini_logo'   => (string) get_field( 'mini_logo', $post_id ),
+				'url'         => '' !== $external_link ? $external_link : get_permalink( $post_id ),
+				'is_external' => '' !== $external_link,
+			];
+		}
+		wp_reset_postdata();
+
+		$grouped = [];
+		foreach ( $events as $event ) {
+			if ( 'mensuels' === $event['type'] && $event['date_fin'] instanceof DateTimeImmutable ) {
+				$cursor    = $event['date_debut']->modify( 'first day of this month' );
+				$end_month = $event['date_fin']->modify( 'first day of this month' );
+				$first     = $cursor;
+
+				while ( $cursor <= $end_month ) {
+					$slot                    = $event;
+					$slot['is_continuation'] = $cursor > $first;
+					$grouped[ (int) $cursor->format( 'Y' ) ][ (int) $cursor->format( 'n' ) ][] = $slot;
+					$cursor = $cursor->modify( '+1 month' );
+				}
+			} else {
+				$event['is_continuation'] = false;
+				$grouped[ (int) $event['date_debut']->format( 'Y' ) ][ (int) $event['date_debut']->format( 'n' ) ][] = $event;
+			}
+		}
+
+		ksort( $grouped );
+		$years = [];
+		foreach ( $grouped as $year => $months ) {
+			ksort( $months );
+			$month_data = [];
+			foreach ( $months as $month => $month_events ) {
+				usort(
+					$month_events,
+					static fn( array $a, array $b ) => $a['date_debut']->getTimestamp() <=> $b['date_debut']->getTimestamp()
+				);
+				$month_data[] = [
+					'month'      => (int) $month,
+					'month_name' => self::month_name( (int) $month ),
+					'events'     => $month_events,
+				];
+			}
+			$years[] = [
+				'year'   => (int) $year,
+				'months' => $month_data,
+			];
+		}
+
+		return [
+			'years' => $years,
+			'term'  => $term instanceof WP_Term ? $term : null,
+		];
+	}
+
+	public static function parse_acf_date( string $raw ): ?DateTimeImmutable {
+		$raw = trim( $raw );
+		if ( '' === $raw ) {
+			return null;
+		}
+
+		foreach ( [ 'Ymd', 'd/m/Y', 'Y-m-d' ] as $format ) {
+			$date = DateTimeImmutable::createFromFormat( $format, $raw );
+			if ( false !== $date ) {
+				return $date->setTime( 0, 0, 0 );
+			}
+		}
+		return null;
+	}
+
+	public static function month_name( int $month ): string {
+		$months = [
+			1 => __( 'Janvier', 'plaidact-timeline' ),
+			2 => __( 'Février', 'plaidact-timeline' ),
+			3 => __( 'Mars', 'plaidact-timeline' ),
+			4 => __( 'Avril', 'plaidact-timeline' ),
+			5 => __( 'Mai', 'plaidact-timeline' ),
+			6 => __( 'Juin', 'plaidact-timeline' ),
+			7 => __( 'Juillet', 'plaidact-timeline' ),
+			8 => __( 'Août', 'plaidact-timeline' ),
+			9 => __( 'Septembre', 'plaidact-timeline' ),
+			10 => __( 'Octobre', 'plaidact-timeline' ),
+			11 => __( 'Novembre', 'plaidact-timeline' ),
+			12 => __( 'Décembre', 'plaidact-timeline' ),
+		];
+		return $months[ $month ] ?? '';
+	}
+
+	public static function month_abbr( int $month ): string {
+		$months = [ 1 => 'jan.', 2 => 'fév.', 3 => 'mars', 4 => 'avr.', 5 => 'mai', 6 => 'juin', 7 => 'juil.', 8 => 'août', 9 => 'sept.', 10 => 'oct.', 11 => 'nov.', 12 => 'déc.' ];
+		return $months[ $month ] ?? '';
+	}
+
+	public static function format_date_short( DateTimeImmutable $date ): string {
+		return $date->format( 'j' ) . ' ' . self::month_abbr( (int) $date->format( 'n' ) ) . ' ' . $date->format( 'Y' );
+	}
+
+	/**
+	 * @param array<string,mixed> $vars
+	 */
+	public static function render_template( string $template, array $vars = [] ): void {
+		$file = PLAIDACT_TIMELINE_PATH . 'templates/' . ltrim( $template, '/' );
+		if ( ! file_exists( $file ) ) {
+			return;
+		}
+		extract( $vars, EXTR_SKIP );
+		require $file;
+	}
+}

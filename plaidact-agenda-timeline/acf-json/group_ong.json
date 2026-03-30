@@ -1,0 +1,59 @@
+[
+  {
+    "key": "group_68c95e432487a",
+    "title": "ONG",
+    "fields": [
+      {
+        "key": "field_68c95e43262fe",
+        "label": "Zone d'engagement",
+        "name": "zone_dengagement",
+        "type": "text"
+      },
+      {
+        "key": "field_68c960d6262ff",
+        "label": "Comment agir ?",
+        "name": "comment_agir",
+        "type": "wysiwyg",
+        "tabs": "all",
+        "toolbar": "full",
+        "media_upload": 1,
+        "delay": 0
+      },
+      {
+        "key": "field_68c961ba26301",
+        "label": "URL du site web",
+        "name": "url_web",
+        "type": "url"
+      },
+      {
+        "key": "field_plaidact_ong_resume_court",
+        "label": "Résumé court",
+        "name": "resume_court",
+        "type": "textarea",
+        "rows": 3,
+        "new_lines": ""
+      },
+      {
+        "key": "field_plaidact_ong_url_don",
+        "label": "URL donation / bénévolat",
+        "name": "url_don",
+        "type": "url"
+      }
+    ],
+    "location": [
+      [
+        {
+          "param": "post_type",
+          "operator": "==",
+          "value": "ong"
+        }
+      ]
+    ],
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "active": true,
+    "show_in_rest": 0
+  }
+]
