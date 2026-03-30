@@ -25,7 +25,6 @@ final class PlaidAct_Breves_Feed {
 		add_action( 'init', array( $this, 'register_breves_post_type' ), 1 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_shortcode( 'plaidact_breves', array( $this, 'render_shortcode' ) );
-		add_shortcode( 'plaidact_breves_latest_dropdown', array( $this, 'render_latest_dropdown_shortcode' ) );
 		add_shortcode( 'plaidact_breves_all', array( $this, 'render_all_breves_grid_shortcode' ) );
 		add_filter( 'template_include', array( $this, 'register_archive_template' ) );
 		add_filter( 'single_template', array( $this, 'register_single_template' ) );
@@ -73,44 +72,15 @@ final class PlaidAct_Breves_Feed {
 			'plaidact_breves'
 		);
 
-		$paged = $this->get_current_page( 'breves_page' );
-
 		return $this->render_feed(
 			array(
 				'posts_per_page' => absint( $atts['posts_per_page'] ),
-				'paged'          => $paged,
+				'paged'          => 1,
 				'pagination_var' => 'breves_page',
 				'feed_title'     => (string) $atts['title'],
+				'is_ticker'      => true,
 			)
 		);
-	}
-
-	public function render_latest_dropdown_shortcode(): string {
-		$query = new WP_Query(
-			array(
-				'post_type'              => 'breves',
-				'post_status'            => 'publish',
-				'posts_per_page'         => 20,
-				'orderby'                => 'date',
-				'order'                  => 'DESC',
-				'ignore_sticky_posts'    => true,
-				'no_found_rows'          => true,
-				'update_post_meta_cache' => false,
-				'update_post_term_cache' => false,
-			)
-		);
-
-		wp_enqueue_style( 'plaidact-breves-feed' );
-
-		ob_start();
-		$this->load_template(
-			'breves-latest-dropdown.php',
-			array(
-				'query' => $query,
-			)
-		);
-		wp_reset_postdata();
-		return (string) ob_get_clean();
 	}
 
 	public function render_all_breves_grid_shortcode( array $atts = array() ): string {
@@ -161,6 +131,7 @@ final class PlaidAct_Breves_Feed {
 			'pagination_var' => 'paged',
 			'feed_title'     => '',
 			'container_class'=> '',
+			'is_ticker'      => false,
 		);
 
 		$args = wp_parse_args( $args, $defaults );
@@ -174,7 +145,7 @@ final class PlaidAct_Breves_Feed {
 				'orderby'                => 'date',
 				'order'                  => 'DESC',
 				'ignore_sticky_posts'    => true,
-				'no_found_rows'          => false,
+				'no_found_rows'          => ! empty( $args['is_ticker'] ),
 				'update_post_meta_cache' => false,
 				'update_post_term_cache' => false,
 			)
