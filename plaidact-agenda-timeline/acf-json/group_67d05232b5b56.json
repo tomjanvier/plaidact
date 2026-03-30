@@ -1,0 +1,113 @@
+[
+    {
+        "key": "group_67d05232b5b56",
+        "title": "Agenda Plaid'Act",
+        "fields": [
+            {
+                "key": "field_67d0523434ee0",
+                "label": "Date de début",
+                "name": "date_debut",
+                "type": "date_picker",
+                "display_format": "d/m/Y",
+                "return_format": "d/m/Y",
+                "first_day": 1
+            },
+            {
+                "key": "field_67d052de34ee1",
+                "label": "Date de fin",
+                "name": "date_fin",
+                "type": "date_picker",
+                "display_format": "d/m/Y",
+                "return_format": "d/m/Y",
+                "first_day": 1
+            },
+            {
+                "key": "field_68dd13185c786",
+                "label": "Lieu",
+                "name": "lieu",
+                "type": "text"
+            },
+            {
+                "key": "field_67d0531f34ee3",
+                "label": "Type d'évènement",
+                "name": "type_evenement",
+                "type": "radio",
+                "choices": {
+                    "classique": "Classique",
+                    "mensuels": "Sur plusieurs mois"
+                },
+                "default_value": "classique",
+                "layout": "vertical"
+            },
+            {
+                "key": "field_67d2fb1b9bf66",
+                "label": "Configuration",
+                "name": "configuration",
+                "type": "checkbox",
+                "choices": {
+                    "important": "Evènement important",
+                    "global": "Evènement global",
+                    "detail": "Evènement détail",
+                    "noprint": "Ne pas afficher en version print"
+                },
+                "layout": "vertical"
+            },
+            {
+                "key": "field_67d0538534ee4",
+                "label": "Mini logo",
+                "name": "mini_logo",
+                "type": "image",
+                "return_format": "url",
+                "preview_size": "medium"
+            },
+            {
+                "key": "field_67d052ee34ee2",
+                "label": "Lien externe sur cet évènement",
+                "name": "lien_evenement",
+                "type": "url"
+            },
+            {
+                "key": "field_plaidact_auteurs",
+                "label": "Auteur(s)",
+                "name": "les_auteurs",
+                "type": "text",
+                "instructions": "Ex: L'équipe Plaid'Act"
+            },
+            {
+                "key": "field_plaidact_infos",
+                "label": "Informations pratiques",
+                "name": "informations_pratiques",
+                "type": "wysiwyg",
+                "tabs": "all",
+                "toolbar": "basic",
+                "media_upload": 0,
+                "delay": 0
+            },
+            {
+                "key": "field_plaidact_notes",
+                "label": "Notes de bas de page",
+                "name": "notes_baspage",
+                "type": "wysiwyg",
+                "tabs": "all",
+                "toolbar": "basic",
+                "media_upload": 0,
+                "delay": 0
+            }
+        ],
+        "location": [
+            [
+                {
+                    "param": "post_type",
+                    "operator": "==",
+                    "value": "agenda"
+                }
+            ]
+        ],
+        "menu_order": 0,
+        "position": "normal",
+        "style": "default",
+        "label_placement": "top",
+        "instruction_placement": "label",
+        "active": true
+    }
+]
