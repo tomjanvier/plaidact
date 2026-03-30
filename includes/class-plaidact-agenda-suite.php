@@ -1,6 +1,6 @@
 <?php
 
-namespace PlaidAct\AgendaTimeline;
+namespace PlaidAct\AgendaSuite;
 
 use DateTimeImmutable;
 use WP_Post;
@@ -14,10 +14,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Plugin {
 	public static function init(): void {
 		add_action( 'init', [ __CLASS__, 'register_taxonomy' ], 0 );
-		add_action( 'init', [ __CLASS__, 'register_ong_cpt_and_taxonomies' ], 1 );
+		add_action( 'init', [ __CLASS__, 'register_asso_cpt_and_taxonomies' ], 1 );
+		add_action( 'init', [ __CLASS__, 'register_blocks' ], 20 );
 		add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_assets' ] );
-		add_shortcode( 'plaidact_timeline', [ __CLASS__, 'shortcode' ] );
-		add_shortcode( 'plaidact_ong_directory', [ __CLASS__, 'ong_directory_shortcode' ] );
+		add_shortcode( 'plaidact_timeline', [ __CLASS__, 'timeline_shortcode' ] );
+		add_shortcode( 'plaidact_asso_directory', [ __CLASS__, 'asso_directory_shortcode' ] );
+		add_shortcode( 'plaidact_ong_directory', [ __CLASS__, 'asso_directory_shortcode' ] ); // legacy
 		add_filter( 'template_include', [ __CLASS__, 'maybe_use_plugin_templates' ] );
 		add_filter( 'theme_page_templates', [ __CLASS__, 'register_page_templates' ] );
 		add_filter( 'template_include', [ __CLASS__, 'handle_page_template' ], 99 );
@@ -29,9 +31,9 @@ final class Plugin {
 			[ 'agenda' ],
 			[
 				'labels' => [
-					'name'          => _x( 'Timelines Agenda', 'taxonomy general name', 'plaidact-timeline' ),
-					'singular_name' => _x( 'Timeline Agenda', 'taxonomy singular name', 'plaidact-timeline' ),
-					'menu_name'     => __( 'Timelines', 'plaidact-timeline' ),
+					'name'          => _x( 'Timelines Agenda', 'taxonomy general name', 'plaidact-breves-feed' ),
+					'singular_name' => _x( 'Timeline Agenda', 'taxonomy singular name', 'plaidact-breves-feed' ),
+					'menu_name'     => __( 'Timelines', 'plaidact-breves-feed' ),
 				],
 				'public'            => true,
 				'hierarchical'      => true,
@@ -45,18 +47,18 @@ final class Plugin {
 		);
 	}
 
-	public static function register_ong_cpt_and_taxonomies(): void {
+	public static function register_asso_cpt_and_taxonomies(): void {
 		register_post_type(
 			'ong',
 			[
 				'labels' => [
-					'name'          => __( 'ONG', 'plaidact-timeline' ),
-					'singular_name' => __( 'ONG', 'plaidact-timeline' ),
-					'menu_name'     => __( 'Répertoire ONG', 'plaidact-timeline' ),
+					'name'          => __( 'Associations', 'plaidact-breves-feed' ),
+					'singular_name' => __( 'Association', 'plaidact-breves-feed' ),
+					'menu_name'     => __( 'Répertoire Asso', 'plaidact-breves-feed' ),
 				],
 				'public'             => true,
-				'has_archive'        => true,
-				'rewrite'            => [ 'slug' => 'ong', 'with_front' => false ],
+				'has_archive'        => 'asso',
+				'rewrite'            => [ 'slug' => 'asso', 'with_front' => false ],
 				'show_in_rest'       => true,
 				'menu_icon'          => 'dashicons-groups',
 				'supports'           => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
@@ -64,43 +66,70 @@ final class Plugin {
 			]
 		);
 
-		self::register_ong_taxonomy(
-			'cause',
-			__( 'Causes', 'plaidact-timeline' ),
-			__( 'Cause', 'plaidact-timeline' ),
-			'cause'
-		);
-		self::register_ong_taxonomy(
-			'forme_engagement',
-			__( 'Formes d’engagement', 'plaidact-timeline' ),
-			__( 'Forme d’engagement', 'plaidact-timeline' ),
-			'forme-engagement'
-		);
-		self::register_ong_taxonomy(
-			'odd',
-			__( 'ODD', 'plaidact-timeline' ),
-			__( 'ODD', 'plaidact-timeline' ),
-			'odd'
-		);
-	}
-
-	private static function register_ong_taxonomy( string $taxonomy, string $plural, string $single, string $slug ): void {
 		register_taxonomy(
-			$taxonomy,
+			'cause',
 			[ 'ong' ],
 			[
 				'labels' => [
-					'name'          => $plural,
-					'singular_name' => $single,
+					'name'          => __( 'Causes', 'plaidact-breves-feed' ),
+					'singular_name' => __( 'Cause', 'plaidact-breves-feed' ),
 				],
 				'public'            => true,
 				'hierarchical'      => true,
 				'show_in_rest'      => true,
 				'show_admin_column' => true,
-				'rewrite'           => [
-					'slug'       => $slug,
-					'with_front' => false,
+				'rewrite'           => [ 'slug' => 'cause', 'with_front' => false ],
+			]
+		);
+	}
+
+	public static function register_blocks(): void {
+		wp_register_script(
+			'plaidact-blocks',
+			PLAIDACT_BREVES_FEED_URL . 'assets/js/plaidact-blocks.js',
+			[ 'wp-blocks', 'wp-element', 'wp-i18n', 'wp-components', 'wp-server-side-render', 'wp-block-editor' ],
+			PLAIDACT_BREVES_FEED_VERSION,
+			true
+		);
+
+		register_block_type(
+			'plaidact/timeline',
+			[
+				'api_version'     => 2,
+				'editor_script'   => 'plaidact-blocks',
+				'render_callback' => [ __CLASS__, 'render_timeline_block' ],
+				'attributes'      => [
+					'term' => [ 'type' => 'string', 'default' => '' ],
+					'fillEmptyMonths' => [ 'type' => 'boolean', 'default' => false ],
 				],
+			]
+		);
+
+		register_block_type(
+			'plaidact/asso-cause-list',
+			[
+				'api_version'     => 2,
+				'editor_script'   => 'plaidact-blocks',
+				'render_callback' => [ __CLASS__, 'render_asso_block' ],
+				'attributes'      => [
+					'cause'       => [ 'type' => 'string', 'default' => '' ],
+					'postsToShow' => [ 'type' => 'number', 'default' => 9 ],
+				],
+			]
+		);
+	}
+
+	public static function render_timeline_block( array $attributes ): string {
+		$term = isset( $attributes['term'] ) ? sanitize_title( (string) $attributes['term'] ) : '';
+		$fill = isset( $attributes['fillEmptyMonths'] ) && $attributes['fillEmptyMonths'] ? '1' : '0';
+		return self::timeline_shortcode( [ 'term' => $term, 'fill_empty_months' => $fill ] );
+	}
+
+	public static function render_asso_block( array $attributes ): string {
+		return self::asso_directory_shortcode(
+			[
+				'cause'          => isset( $attributes['cause'] ) ? sanitize_title( (string) $attributes['cause'] ) : '',
+				'posts_per_page' => isset( $attributes['postsToShow'] ) ? (string) absint( $attributes['postsToShow'] ) : '9',
 			]
 		);
 	}
@@ -108,25 +137,25 @@ final class Plugin {
 	public static function enqueue_assets(): void {
 		global $post;
 		$load_timeline = is_tax( 'agenda_timeline' );
-		$load_ong      = is_post_type_archive( 'ong' ) || is_singular( 'ong' );
+		$load_asso     = is_post_type_archive( 'ong' ) || is_singular( 'ong' );
 
 		if ( $post instanceof WP_Post ) {
 			$load_timeline = $load_timeline || has_shortcode( $post->post_content, 'plaidact_timeline' );
-			$load_ong      = $load_ong || has_shortcode( $post->post_content, 'plaidact_ong_directory' );
+			$load_asso     = $load_asso || has_shortcode( $post->post_content, 'plaidact_asso_directory' ) || has_shortcode( $post->post_content, 'plaidact_ong_directory' );
 		}
 
 		if ( $load_timeline ) {
-			wp_enqueue_style( 'plaidact-agenda-timeline', PLAIDACT_TIMELINE_URL . 'assets/css/agenda-timeline.css', [], PLAIDACT_TIMELINE_VERSION );
-			wp_enqueue_script( 'plaidact-agenda-timeline', PLAIDACT_TIMELINE_URL . 'assets/js/agenda-timeline.js', [], PLAIDACT_TIMELINE_VERSION, true );
+			wp_enqueue_style( 'plaidact-agenda-timeline', PLAIDACT_BREVES_FEED_URL . 'assets/css/agenda-timeline.css', [], PLAIDACT_BREVES_FEED_VERSION );
+			wp_enqueue_script( 'plaidact-agenda-timeline', PLAIDACT_BREVES_FEED_URL . 'assets/js/agenda-timeline.js', [], PLAIDACT_BREVES_FEED_VERSION, true );
 		}
 
-		if ( $load_ong ) {
-			wp_enqueue_style( 'plaidact-ong-directory', PLAIDACT_TIMELINE_URL . 'assets/css/ong-directory.css', [], PLAIDACT_TIMELINE_VERSION );
+		if ( $load_asso ) {
+			wp_enqueue_style( 'plaidact-asso-directory', PLAIDACT_BREVES_FEED_URL . 'assets/css/asso-directory.css', [], PLAIDACT_BREVES_FEED_VERSION );
 		}
 	}
 
 	public static function register_page_templates( array $templates ): array {
-		$templates['plaidact-ong-directory-template.php'] = __( 'Répertoire des ONG (PlaidAct)', 'plaidact-timeline' );
+		$templates['plaidact-asso-directory-template.php'] = __( 'Répertoire des associations (PlaidAct)', 'plaidact-breves-feed' );
 		return $templates;
 	}
 
@@ -134,10 +163,8 @@ final class Plugin {
 		if ( ! is_singular( 'page' ) ) {
 			return $template;
 		}
-
-		$page_template = get_page_template_slug();
-		if ( 'plaidact-ong-directory-template.php' === $page_template ) {
-			return PLAIDACT_TIMELINE_PATH . 'templates/page-repertoire-ong.php';
+		if ( 'plaidact-asso-directory-template.php' === get_page_template_slug() ) {
+			return PLAIDACT_BREVES_FEED_PATH . 'templates/page-repertoire-asso.php';
 		}
 
 		return $template;
@@ -145,43 +172,46 @@ final class Plugin {
 
 	public static function maybe_use_plugin_templates( string $template ): string {
 		if ( is_tax( 'agenda_timeline' ) ) {
-			return PLAIDACT_TIMELINE_PATH . 'templates/taxonomy-agenda_timeline.php';
+			return PLAIDACT_BREVES_FEED_PATH . 'templates/taxonomy-agenda_timeline.php';
 		}
 		if ( is_post_type_archive( 'ong' ) ) {
-			return PLAIDACT_TIMELINE_PATH . 'templates/archive-ong.php';
+			return PLAIDACT_BREVES_FEED_PATH . 'templates/archive-asso.php';
 		}
 		if ( is_singular( 'ong' ) ) {
-			return PLAIDACT_TIMELINE_PATH . 'templates/single-ong.php';
+			return PLAIDACT_BREVES_FEED_PATH . 'templates/single-asso.php';
 		}
 
 		return $template;
 	}
 
-	public static function ong_directory_shortcode( array $atts ): string {
+	public static function asso_directory_shortcode( array $atts ): string {
 		$atts = shortcode_atts(
 			[
 				'posts_per_page' => 9,
+				'cause'          => '',
 			],
 			$atts,
-			'plaidact_ong_directory'
+			'plaidact_asso_directory'
 		);
 
 		ob_start();
 		self::render_template(
-			'ong-directory-loop.php',
+			'asso-directory-loop.php',
 			[
 				'posts_per_page' => max( 1, absint( $atts['posts_per_page'] ) ),
 				'is_shortcode'   => true,
+				'fixed_cause'    => sanitize_title( (string) $atts['cause'] ),
 			]
 		);
 		return (string) ob_get_clean();
 	}
 
-	public static function shortcode( array $atts ): string {
+	public static function timeline_shortcode( array $atts ): string {
 		$atts = shortcode_atts(
 			[
 				'term'  => '',
 				'title' => '',
+				'fill_empty_months' => '0',
 			],
 			$atts,
 			'plaidact_timeline'
@@ -189,12 +219,12 @@ final class Plugin {
 
 		$term_slug = sanitize_title( (string) $atts['term'] );
 		if ( '' === $term_slug ) {
-			return '<p class="pa-timeline-error">' . esc_html__( 'Shortcode [plaidact_timeline] : paramètre "term" manquant.', 'plaidact-timeline' ) . '</p>';
+			return '<p class="pa-timeline-error">' . esc_html__( 'Shortcode [plaidact_timeline] : paramètre "term" manquant.', 'plaidact-breves-feed' ) . '</p>';
 		}
 
-		$payload = self::build_timeline_data( $term_slug );
+		$payload = self::build_timeline_data( $term_slug, '1' === (string) $atts['fill_empty_months'] );
 		if ( empty( $payload['years'] ) ) {
-			return '<p class="pa-timeline-empty">' . esc_html__( 'Aucun événement à afficher pour cette timeline.', 'plaidact-timeline' ) . '</p>';
+			return '<p class="pa-timeline-empty">' . esc_html__( 'Aucun événement à afficher pour cette timeline.', 'plaidact-breves-feed' ) . '</p>';
 		}
 
 		ob_start();
@@ -208,22 +238,17 @@ final class Plugin {
 		return (string) ob_get_clean();
 	}
 
-	/**
-	 * @return array<string,mixed>
-	 */
-	public static function get_ong_filters_from_request(): array {
+	/** @return array<string,mixed> */
+	public static function get_asso_filters_from_request(): array {
 		return [
-			's'                => isset( $_GET['ong_s'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['ong_s'] ) ) : '',
-			'cause'            => isset( $_GET['ong_cause'] ) ? sanitize_title( wp_unslash( (string) $_GET['ong_cause'] ) ) : '',
-			'forme_engagement' => isset( $_GET['ong_forme_engagement'] ) ? sanitize_title( wp_unslash( (string) $_GET['ong_forme_engagement'] ) ) : '',
-			'paged'            => max( 1, get_query_var( 'paged' ) ? absint( get_query_var( 'paged' ) ) : ( isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1 ) ),
+			's'     => isset( $_GET['asso_s'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['asso_s'] ) ) : '',
+			'cause' => isset( $_GET['asso_cause'] ) ? sanitize_title( wp_unslash( (string) $_GET['asso_cause'] ) ) : '',
+			'paged' => max( 1, get_query_var( 'paged' ) ? absint( get_query_var( 'paged' ) ) : ( isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1 ) ),
 		];
 	}
 
-	/**
-	 * @param array<string,mixed> $filters
-	 */
-	public static function get_ong_query_args( array $filters, int $posts_per_page = 9 ): array {
+	/** @param array<string,mixed> $filters */
+	public static function get_asso_query_args( array $filters, int $posts_per_page = 9, string $fixed_cause = '' ): array {
 		$args = [
 			'post_type'      => 'ong',
 			'post_status'    => 'publish',
@@ -234,53 +259,40 @@ final class Plugin {
 			's'              => (string) $filters['s'],
 		];
 
-		$tax_query = [];
-		if ( ! empty( $filters['cause'] ) ) {
-			$tax_query[] = [
-				'taxonomy' => 'cause',
-				'field'    => 'slug',
-				'terms'    => (string) $filters['cause'],
+		$target_cause = '' !== $fixed_cause ? $fixed_cause : (string) $filters['cause'];
+		if ( '' !== $target_cause ) {
+			$args['tax_query'] = [
+				[
+					'taxonomy' => 'cause',
+					'field'    => 'slug',
+					'terms'    => $target_cause,
+				],
 			];
-		}
-		if ( ! empty( $filters['forme_engagement'] ) ) {
-			$tax_query[] = [
-				'taxonomy' => 'forme_engagement',
-				'field'    => 'slug',
-				'terms'    => (string) $filters['forme_engagement'],
-			];
-		}
-		if ( ! empty( $tax_query ) ) {
-			$args['tax_query'] = $tax_query;
 		}
 
 		return $args;
 	}
 
-	/**
-	 * @return array<string,mixed>
-	 */
-	public static function get_ong_card_data( int $post_id ): array {
+	/** @return array<string,mixed> */
+	public static function get_asso_card_data( int $post_id ): array {
 		$site_url = trim( (string) get_field( 'url_web', $post_id ) );
 		$excerpt  = trim( (string) get_field( 'resume_court', $post_id ) );
 		if ( '' === $excerpt ) {
 			$excerpt = wp_strip_all_tags( get_the_excerpt( $post_id ) );
 		}
 		return [
-			'post_id'            => $post_id,
-			'title'              => get_the_title( $post_id ),
-			'permalink'          => get_permalink( $post_id ),
-			'zone_dengagement'   => (string) get_field( 'zone_dengagement', $post_id ),
-			'excerpt'            => wp_trim_words( $excerpt, 24, '…' ),
-			'site_url'           => $site_url,
-			'cause_terms'        => get_the_terms( $post_id, 'cause' ) ?: [],
-			'forme_terms'        => get_the_terms( $post_id, 'forme_engagement' ) ?: [],
+			'post_id'          => $post_id,
+			'title'            => get_the_title( $post_id ),
+			'permalink'        => get_permalink( $post_id ),
+			'zone_dengagement' => (string) get_field( 'zone_dengagement', $post_id ),
+			'excerpt'          => wp_trim_words( $excerpt, 24, '…' ),
+			'site_url'         => $site_url,
+			'cause_terms'      => get_the_terms( $post_id, 'cause' ) ?: [],
 		];
 	}
 
-	/**
-	 * @return array<int,array{post_id:int,title:string,permalink:string}>
-	 */
-	public static function get_similar_ong( int $post_id, int $limit = 3 ): array {
+	/** @return array<int,array{post_id:int,title:string,permalink:string}> */
+	public static function get_similar_asso( int $post_id, int $limit = 3 ): array {
 		$terms = get_the_terms( $post_id, 'cause' );
 		if ( ! $terms || is_wp_error( $terms ) ) {
 			return [];
@@ -316,10 +328,8 @@ final class Plugin {
 		return $items;
 	}
 
-	/**
-	 * @return array{years: array<int,array{year:int,months:array<int,array{month:int,month_name:string,events:array}>}>, term: WP_Term|null}
-	 */
-	public static function build_timeline_data( string $term_slug ): array {
+	/** @return array{years: array<int,array{year:int,months:array<int,array{month:int,month_name:string,events:array}>}>, term: WP_Term|null} */
+	public static function build_timeline_data( string $term_slug, bool $fill_empty_months = false ): array {
 		$term = get_term_by( 'slug', $term_slug, 'agenda_timeline' );
 
 		$query = new WP_Query(
@@ -389,12 +399,31 @@ final class Plugin {
 			}
 		}
 
+		if ( $fill_empty_months && ! empty( $grouped ) ) {
+			$years_keys = array_keys( $grouped );
+			$min_year = (int) min( $years_keys );
+			$max_year = (int) max( $years_keys );
+			for ( $y = $min_year; $y <= $max_year; $y++ ) {
+				if ( ! isset( $grouped[ $y ] ) ) {
+					$grouped[ $y ] = [];
+				}
+				for ( $m = 1; $m <= 12; $m++ ) {
+					if ( ! isset( $grouped[ $y ][ $m ] ) ) {
+						$grouped[ $y ][ $m ] = [];
+					}
+				}
+			}
+		}
+
 		ksort( $grouped );
 		$years = [];
 		foreach ( $grouped as $year => $months ) {
 			ksort( $months );
 			$month_data = [];
 			foreach ( $months as $month => $month_events ) {
+				if ( empty( $month_events ) && ! $fill_empty_months ) {
+					continue;
+				}
 				usort(
 					$month_events,
 					static fn( array $a, array $b ) => $a['date_debut']->getTimestamp() <=> $b['date_debut']->getTimestamp()
@@ -404,6 +433,9 @@ final class Plugin {
 					'month_name' => self::month_name( (int) $month ),
 					'events'     => $month_events,
 				];
+			}
+			if ( empty( $month_data ) ) {
+				continue;
 			}
 			$years[] = [
 				'year'   => (int) $year,
@@ -434,18 +466,18 @@ final class Plugin {
 
 	public static function month_name( int $month ): string {
 		$months = [
-			1 => __( 'Janvier', 'plaidact-timeline' ),
-			2 => __( 'Février', 'plaidact-timeline' ),
-			3 => __( 'Mars', 'plaidact-timeline' ),
-			4 => __( 'Avril', 'plaidact-timeline' ),
-			5 => __( 'Mai', 'plaidact-timeline' ),
-			6 => __( 'Juin', 'plaidact-timeline' ),
-			7 => __( 'Juillet', 'plaidact-timeline' ),
-			8 => __( 'Août', 'plaidact-timeline' ),
-			9 => __( 'Septembre', 'plaidact-timeline' ),
-			10 => __( 'Octobre', 'plaidact-timeline' ),
-			11 => __( 'Novembre', 'plaidact-timeline' ),
-			12 => __( 'Décembre', 'plaidact-timeline' ),
+			1 => __( 'Janvier', 'plaidact-breves-feed' ),
+			2 => __( 'Février', 'plaidact-breves-feed' ),
+			3 => __( 'Mars', 'plaidact-breves-feed' ),
+			4 => __( 'Avril', 'plaidact-breves-feed' ),
+			5 => __( 'Mai', 'plaidact-breves-feed' ),
+			6 => __( 'Juin', 'plaidact-breves-feed' ),
+			7 => __( 'Juillet', 'plaidact-breves-feed' ),
+			8 => __( 'Août', 'plaidact-breves-feed' ),
+			9 => __( 'Septembre', 'plaidact-breves-feed' ),
+			10 => __( 'Octobre', 'plaidact-breves-feed' ),
+			11 => __( 'Novembre', 'plaidact-breves-feed' ),
+			12 => __( 'Décembre', 'plaidact-breves-feed' ),
 		];
 		return $months[ $month ] ?? '';
 	}
@@ -459,11 +491,9 @@ final class Plugin {
 		return $date->format( 'j' ) . ' ' . self::month_abbr( (int) $date->format( 'n' ) ) . ' ' . $date->format( 'Y' );
 	}
 
-	/**
-	 * @param array<string,mixed> $vars
-	 */
+	/** @param array<string,mixed> $vars */
 	public static function render_template( string $template, array $vars = [] ): void {
-		$file = PLAIDACT_TIMELINE_PATH . 'templates/' . ltrim( $template, '/' );
+		$file = PLAIDACT_BREVES_FEED_PATH . 'templates/' . ltrim( $template, '/' );
 		if ( ! file_exists( $file ) ) {
 			return;
 		}
