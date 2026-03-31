@@ -3,7 +3,7 @@
 Plugin WordPress unifié pour :
 - les brèves,
 - la timeline agenda,
-- le répertoire des associations (fonction historique `ong` conservée côté données).
+- le répertoire des associations.
 
 ## Fonctionnalités
 - Shortcodes :
@@ -13,7 +13,6 @@ Plugin WordPress unifié pour :
   - `[plaidact_breves_all posts_per_page="5"]` (toutes les brèves, 3 colonnes, 5/page)
   - `[plaidact_timeline term="nom-de-la-timeline" title="Titre optionnel" fill_empty_months="0|1"]`
   - `[plaidact_asso_directory posts_per_page="9" cause="slug-cause"]`
-  - `[plaidact_ong_directory]` (alias legacy)
   - `[plaidact_hover_term type="asso|definition" id="slug" text="Texte survolé"]`
 - Blocs Gutenberg :
   - `plaidact/timeline`
