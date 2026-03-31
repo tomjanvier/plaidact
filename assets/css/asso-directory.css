@@ -78,5 +78,5 @@
 .plaidact-hover-card__inner > *{float:none;max-width:100%}
 .plaidact-hover-card__logo{width:52px;height:52px;object-fit:contain;border:1px solid #eee;border-radius:8px;background:#fff;display:block;margin-bottom:.45rem}
 .plaidact-hover-card__title{display:block;color:var(--plaid-purple);margin-bottom:.25rem}
-.plaidact-hover-card__desc{margin:0;color:var(--plaid-text);font-size:.84rem;line-height:1.4}
+.plaidact-hover-card__desc{display:block;margin:0;color:var(--plaid-text);font-size:.84rem;line-height:1.4}
 .plaidact-hover-card__btn{margin-top:.15rem;display:inline-flex;background:var(--plaid-purple);color:#fff;padding:.35rem .65rem;border-radius:999px;text-decoration:none;font-size:.78rem;font-weight:700}
