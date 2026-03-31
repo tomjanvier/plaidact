@@ -361,7 +361,7 @@ Linktree|https://linktr.ee/acat"',
 		global $post;
 		$load_timeline = is_tax( 'agenda_timeline' );
 		$load_asso     = is_post_type_archive( self::ASSO_POST_TYPE ) || is_singular( self::ASSO_POST_TYPE );
-		$load_hover    = $load_asso;
+		$load_hover    = ! is_admin();
 
 		if ( $post instanceof WP_Post ) {
 			$load_timeline = $load_timeline || has_shortcode( $post->post_content, 'plaidact_timeline' );
@@ -369,7 +369,6 @@ Linktree|https://linktr.ee/acat"',
 			$load_hover    = $load_hover || false !== strpos( $post->post_content, '[[' ) || has_shortcode( $post->post_content, 'plaidact_hover_term' );
 		}
 
-		$load_hover = $load_hover || is_singular();
 
 		if ( $load_timeline ) {
 			wp_enqueue_style( 'plaidact-agenda-timeline', PLAIDACT_BREVES_FEED_URL . 'assets/css/agenda-timeline.css', [], PLAIDACT_BREVES_FEED_VERSION );
