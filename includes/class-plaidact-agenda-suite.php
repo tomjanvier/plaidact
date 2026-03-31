@@ -1013,7 +1013,7 @@ Linktree|https://linktr.ee/acat"',
 			$html .= '<img class="plaidact-hover-card__logo" src="' . esc_url( (string) $card['logo'] ) . '" alt="" loading="lazy" decoding="async" />';
 		}
 		$html .= '<strong class="plaidact-hover-card__title">' . esc_html( (string) $card['title'] ) . '</strong>';
-		$html .= '<p class="plaidact-hover-card__desc">' . esc_html( (string) $card['description'] ) . '</p>';
+		$html .= '<span class="plaidact-hover-card__desc">' . esc_html( (string) $card['description'] ) . '</span>';
 		if ( ! empty( $card['url'] ) ) {
 			$html .= '<a class="plaidact-hover-card__btn" href="' . esc_url( (string) $card['url'] ) . '">' . esc_html( (string) $card['cta'] ) . '</a>';
 		}
