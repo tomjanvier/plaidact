@@ -18,6 +18,15 @@
 			while (track.scrollWidth < ticker.clientWidth * 2) {
 				secondGroup.insertAdjacentHTML('beforeend', firstGroup.innerHTML);
 			}
+
+			var applyDuration = function () {
+				var pixelsPerSecond = 95;
+				var duration = Math.max(18, Math.round(firstGroup.scrollWidth / pixelsPerSecond));
+				track.style.animationDuration = duration + 's';
+			};
+
+			applyDuration();
+			window.addEventListener('resize', applyDuration, { passive: true });
 		});
 	});
 })();

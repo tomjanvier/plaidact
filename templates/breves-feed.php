@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 ?>
-<section class="plaidact-breves-feed <?php echo esc_attr( (string) $args['container_class'] ); ?>" aria-label="<?php esc_attr_e( 'Fil d’actualité des brèves', 'plaidact-breves-feed' ); ?>">
+<section class="plaidact-breves-feed <?php echo ! empty( $args['is_ticker'] ) ? 'plaidact-breves-feed--ticker' : ''; ?> <?php echo esc_attr( (string) $args['container_class'] ); ?>" aria-label="<?php esc_attr_e( 'Fil d’actualité des brèves', 'plaidact-breves-feed' ); ?>">
 	<?php if ( ! empty( $args['feed_title'] ) ) : ?>
 		<header class="plaidact-breves-feed__header">
 			<h2 class="plaidact-breves-feed__title"><?php echo esc_html( (string) $args['feed_title'] ); ?></h2>

@@ -11,14 +11,25 @@ $title_override = $title_override ?? '';
 $layout         = isset( $layout ) && 'horizontal' === $layout ? 'horizontal' : 'vertical';
 $columns        = isset( $columns ) ? max( 1, absint( $columns ) ) : 3;
 $events_per_column = isset( $events_per_column ) ? absint( $events_per_column ) : 0;
+$show_title     = ! isset( $show_title ) || (bool) $show_title;
+$show_download  = ! isset( $show_download ) || (bool) $show_download;
 $years          = $data['years'] ?? [];
 $term           = $data['term'] ?? null;
 
 $title = $title_override ?: ( $term instanceof WP_Term ? $term->name : __( 'Agenda', 'plaidact-breves-feed' ) );
 $slug  = $term instanceof WP_Term ? $term->slug : 'timeline';
+$aria_label = '' !== trim( (string) $title ) ? (string) $title : __( 'Timeline agenda', 'plaidact-breves-feed' );
+$plaidact_logo = 'https://plaidact.org/wp-content/uploads/2026/01/Capture-decran-2026-01-20-a-12.02.40.png';
 ?>
-<section class="pa-timeline pa-timeline--<?php echo esc_attr( $layout ); ?>" id="pa-timeline-<?php echo esc_attr( $slug ); ?>" aria-label="<?php echo esc_attr( $title ); ?>" style="--pa-timeline-columns:<?php echo esc_attr( (string) $columns ); ?>">
-	<h2 class="pa-timeline-title"><?php echo esc_html( $title ); ?></h2>
+<section class="pa-timeline pa-timeline--<?php echo esc_attr( $layout ); ?>" id="pa-timeline-<?php echo esc_attr( $slug ); ?>" aria-label="<?php echo esc_attr( $aria_label ); ?>" style="--pa-timeline-columns:<?php echo esc_attr( (string) $columns ); ?>">
+	<?php if ( $show_title && '' !== trim( (string) $title ) ) : ?>
+		<h2 class="pa-timeline-title"><?php echo esc_html( $title ); ?></h2>
+	<?php endif; ?>
+	<?php if ( $show_download ) : ?>
+		<div class="pa-timeline-actions">
+			<button type="button" class="pa-timeline-download" data-timeline-print="<?php echo esc_attr( $slug ); ?>"><?php esc_html_e( 'Télécharger la timeline', 'plaidact-breves-feed' ); ?></button>
+		</div>
+	<?php endif; ?>
 
 	<?php if ( count( $years ) > 1 ) : ?>
 		<nav class="pa-years-nav" aria-label="<?php esc_attr_e( 'Navigation par année', 'plaidact-breves-feed' ); ?>">
@@ -94,5 +105,8 @@ $slug  = $term instanceof WP_Term ? $term->slug : 'timeline';
 				</div>
 			</div>
 		<?php endforeach; ?>
+	</div>
+	<div class="pa-timeline-print-brand" aria-hidden="true">
+		<img src="<?php echo esc_url( $plaidact_logo ); ?>" alt="PLAID·ACT" loading="lazy" decoding="async" />
 	</div>
 </section>

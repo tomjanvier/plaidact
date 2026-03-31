@@ -24,6 +24,12 @@
         "type": "url"
       },
       {
+        "key": "field_plaidact_ong_url_contact",
+        "label": "URL de contact",
+        "name": "url_contact",
+        "type": "url"
+      },
+      {
         "key": "field_plaidact_ong_social_facebook",
         "label": "Réseau social : Facebook",
         "name": "social_facebook",

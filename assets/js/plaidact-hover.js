@@ -30,18 +30,52 @@
 			if (!card) {
 				return;
 			}
+			var closeTimer = null;
 
 			var open = function () {
+				if (closeTimer) {
+					window.clearTimeout(closeTimer);
+					closeTimer = null;
+				}
 				positionCard(term, card);
 			};
 			var close = function () {
+				if (closeTimer) {
+					window.clearTimeout(closeTimer);
+				}
+				closeTimer = window.setTimeout(function () {
+					card.classList.remove('is-open');
+				}, 90);
+			};
+			var closeImmediately = function () {
+				if (closeTimer) {
+					window.clearTimeout(closeTimer);
+					closeTimer = null;
+				}
 				card.classList.remove('is-open');
 			};
 
 			term.addEventListener('mouseenter', open);
-			term.addEventListener('focus', open, true);
+			term.addEventListener('focusin', open);
 			term.addEventListener('mouseleave', close);
-			term.addEventListener('blur', close, true);
+			term.addEventListener('focusout', close);
+			card.addEventListener('mouseenter', open);
+			card.addEventListener('mouseleave', close);
+
+			term.addEventListener('click', function (event) {
+				if (card.classList.contains('is-open')) {
+					closeImmediately();
+					return;
+				}
+				open();
+				event.preventDefault();
+			});
+
+			document.addEventListener('click', function (event) {
+				if (!term.contains(event.target)) {
+					closeImmediately();
+				}
+			});
 
 			window.addEventListener('scroll', function () {
 				if (card.classList.contains('is-open')) {

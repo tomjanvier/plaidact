@@ -190,6 +190,8 @@ final class Plugin {
 				'attributes'      => [
 					'term' => [ 'type' => 'string', 'default' => '' ],
 					'title' => [ 'type' => 'string', 'default' => '' ],
+					'showTitle' => [ 'type' => 'boolean', 'default' => true ],
+					'showDownload' => [ 'type' => 'boolean', 'default' => true ],
 					'layout' => [ 'type' => 'string', 'default' => 'vertical' ],
 					'columns' => [ 'type' => 'number', 'default' => 3 ],
 					'fillEmptyMonths' => [ 'type' => 'boolean', 'default' => false ],
@@ -219,8 +221,10 @@ final class Plugin {
 		return self::timeline_shortcode(
 			[
 				'term'              => $term,
-				'title'             => isset( $attributes['title'] ) ? sanitize_text_field( (string) $attributes['title'] ) : '',
-				'layout'            => $layout,
+					'title'             => isset( $attributes['title'] ) ? sanitize_text_field( (string) $attributes['title'] ) : '',
+					'show_title'        => ( isset( $attributes['showTitle'] ) && false === $attributes['showTitle'] ) ? '0' : '1',
+					'show_download'     => ( isset( $attributes['showDownload'] ) && false === $attributes['showDownload'] ) ? '0' : '1',
+					'layout'            => $layout,
 				'columns'           => isset( $attributes['columns'] ) ? (string) max( 1, absint( (int) $attributes['columns'] ) ) : '3',
 				'fill_empty_months' => $fill,
 				'events_per_column' => isset( $attributes['eventsPerColumn'] ) ? (string) absint( (int) $attributes['eventsPerColumn'] ) : '0',
@@ -275,6 +279,7 @@ final class Plugin {
 			'',
 			'https://www.acatfrance.fr',
 			'https://www.acatfrance.fr/faire-un-don',
+			'https://www.acatfrance.fr/contact',
 			'"Droits humains|Justice"',
 			'Texte court de présentation',
 			'https://facebook.com/acat',
@@ -436,10 +441,12 @@ Linktree|https://linktr.ee/acat"',
 
 	public static function timeline_shortcode( array $atts ): string {
 		$atts = shortcode_atts(
-			[
-				'term'  => '',
-				'title' => '',
-				'fill_empty_months' => '0',
+				[
+					'term'  => '',
+					'title' => '',
+					'show_title' => '1',
+					'show_download' => '1',
+					'fill_empty_months' => '0',
 				'layout' => 'vertical',
 				'columns' => '3',
 				'events_per_column' => '0',
@@ -461,10 +468,12 @@ Linktree|https://linktr.ee/acat"',
 		ob_start();
 		self::render_template(
 			'timeline.php',
-			[
-				'data'           => $payload,
-				'title_override' => sanitize_text_field( (string) $atts['title'] ),
-				'layout'         => in_array( (string) $atts['layout'], [ 'vertical', 'horizontal' ], true ) ? (string) $atts['layout'] : 'vertical',
+				[
+					'data'           => $payload,
+					'title_override' => sanitize_text_field( (string) $atts['title'] ),
+					'show_title'     => '0' !== (string) $atts['show_title'],
+					'show_download'  => '0' !== (string) $atts['show_download'],
+					'layout'         => in_array( (string) $atts['layout'], [ 'vertical', 'horizontal' ], true ) ? (string) $atts['layout'] : 'vertical',
 				'columns'        => max( 1, absint( (string) $atts['columns'] ) ),
 				'events_per_column' => absint( (string) $atts['events_per_column'] ),
 			]
@@ -1022,6 +1031,7 @@ Linktree|https://linktr.ee/acat"',
 			'logo_file',
 			'url_web',
 			'url_don',
+			'url_contact',
 			'causes',
 			'resume_court',
 			'social_facebook',
@@ -1211,7 +1221,7 @@ Linktree|https://linktr.ee/acat"',
 
 	/** @param array<string,string> $data */
 	private static function sync_asso_meta( int $post_id, array $data ): void {
-		$meta_keys = [ 'url_web', 'url_don', 'resume_court', 'social_links_csv' ];
+		$meta_keys = [ 'url_web', 'url_don', 'url_contact', 'resume_court', 'social_links_csv' ];
 		foreach ( $meta_keys as $key ) {
 			if ( isset( $data[ $key ] ) ) {
 				update_field( $key, $data[ $key ], $post_id );
@@ -1382,6 +1392,7 @@ Linktree|https://linktr.ee/acat"',
 			'logo_url',
 			'url_web',
 			'url_don',
+			'url_contact',
 			'social_facebook',
 			'social_x',
 			'social_instagram',
