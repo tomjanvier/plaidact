@@ -18,7 +18,8 @@
 		category: 'widgets',
 		attributes: {
 			term: { type: 'string', default: '' },
-			fillEmptyMonths: { type: 'boolean', default: false }
+			fillEmptyMonths: { type: 'boolean', default: false },
+			eventsPerColumn: { type: 'number', default: 0 }
 		},
 		edit: function (props) {
 			return el('div', {}, [
@@ -33,6 +34,14 @@
 							label: __('Afficher aussi les mois vides', 'plaidact-breves-feed'),
 							checked: !!props.attributes.fillEmptyMonths,
 							onChange: function (v) { props.setAttributes({ fillEmptyMonths: !!v }); }
+						}),
+						el(RangeControl, {
+							label: __('Événements max par colonne (horizontal)', 'plaidact-breves-feed'),
+							value: props.attributes.eventsPerColumn || 0,
+							onChange: function (n) { props.setAttributes({ eventsPerColumn: n || 0 }); },
+							min: 0,
+							max: 6,
+							help: __('0 = empilement classique ; 2 = deux événements par colonne.', 'plaidact-breves-feed')
 						})
 					)
 				),

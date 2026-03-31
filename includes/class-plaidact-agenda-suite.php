@@ -190,6 +190,7 @@ final class Plugin {
 				'attributes'      => [
 					'term' => [ 'type' => 'string', 'default' => '' ],
 					'fillEmptyMonths' => [ 'type' => 'boolean', 'default' => false ],
+					'eventsPerColumn' => [ 'type' => 'number', 'default' => 0 ],
 				],
 			]
 		);
@@ -211,7 +212,13 @@ final class Plugin {
 	public static function render_timeline_block( array $attributes ): string {
 		$term = isset( $attributes['term'] ) ? sanitize_title( (string) $attributes['term'] ) : '';
 		$fill = isset( $attributes['fillEmptyMonths'] ) && $attributes['fillEmptyMonths'] ? '1' : '0';
-		return self::timeline_shortcode( [ 'term' => $term, 'fill_empty_months' => $fill ] );
+		return self::timeline_shortcode(
+			[
+				'term'              => $term,
+				'fill_empty_months' => $fill,
+				'events_per_column' => isset( $attributes['eventsPerColumn'] ) ? (string) absint( (int) $attributes['eventsPerColumn'] ) : '0',
+			]
+		);
 	}
 
 	public static function render_asso_block( array $attributes ): string {
@@ -342,22 +349,22 @@ Linktree|https://linktr.ee/acat"',
 		global $post;
 		$load_timeline = is_tax( 'agenda_timeline' );
 		$load_asso     = is_post_type_archive( self::ASSO_POST_TYPE ) || is_singular( self::ASSO_POST_TYPE );
+		$load_hover    = $load_asso;
 
 		if ( $post instanceof WP_Post ) {
 			$load_timeline = $load_timeline || has_shortcode( $post->post_content, 'plaidact_timeline' );
 			$load_asso     = $load_asso || has_shortcode( $post->post_content, 'plaidact_asso_directory' );
+			$load_hover    = $load_hover || false !== strpos( $post->post_content, '[[' ) || has_shortcode( $post->post_content, 'plaidact_hover_term' );
 		}
+
+		$load_hover = $load_hover || is_singular( 'breves' ) || is_singular( 'agenda' );
 
 		if ( $load_timeline ) {
 			wp_enqueue_style( 'plaidact-agenda-timeline', PLAIDACT_BREVES_FEED_URL . 'assets/css/agenda-timeline.css', [], PLAIDACT_BREVES_FEED_VERSION );
 			wp_enqueue_script( 'plaidact-agenda-timeline', PLAIDACT_BREVES_FEED_URL . 'assets/js/agenda-timeline.js', [], PLAIDACT_BREVES_FEED_VERSION, true );
 		}
 
-		if ( $load_asso ) {
-			wp_enqueue_style( 'plaidact-asso-directory', PLAIDACT_BREVES_FEED_URL . 'assets/css/asso-directory.css', [], PLAIDACT_BREVES_FEED_VERSION );
-		}
-
-		if ( $post instanceof WP_Post && false !== strpos( $post->post_content, '[[' ) ) {
+		if ( $load_asso || $load_hover ) {
 			wp_enqueue_style( 'plaidact-asso-directory', PLAIDACT_BREVES_FEED_URL . 'assets/css/asso-directory.css', [], PLAIDACT_BREVES_FEED_VERSION );
 		}
 	}
@@ -427,6 +434,7 @@ Linktree|https://linktr.ee/acat"',
 				'fill_empty_months' => '0',
 				'layout' => 'vertical',
 				'columns' => '3',
+				'events_per_column' => '0',
 			],
 			$atts,
 			'plaidact_timeline'
@@ -450,6 +458,7 @@ Linktree|https://linktr.ee/acat"',
 				'title_override' => sanitize_text_field( (string) $atts['title'] ),
 				'layout'         => in_array( (string) $atts['layout'], [ 'vertical', 'horizontal' ], true ) ? (string) $atts['layout'] : 'vertical',
 				'columns'        => max( 1, absint( (string) $atts['columns'] ) ),
+				'events_per_column' => absint( (string) $atts['events_per_column'] ),
 			]
 		);
 		return (string) ob_get_clean();
@@ -622,6 +631,7 @@ Linktree|https://linktr.ee/acat"',
 			$post_id = get_the_ID();
 
 			$start = self::parse_acf_date( (string) get_post_meta( $post_id, 'date_debut', true ) );
+			$start_raw = (string) get_post_meta( $post_id, 'date_debut', true );
 			if ( ! $start ) {
 				continue;
 			}
@@ -635,6 +645,7 @@ Linktree|https://linktr.ee/acat"',
 				'title'       => get_the_title(),
 				'date_debut'  => $start,
 				'date_fin'    => $end,
+				'has_day'     => self::has_day_precision( $start_raw ),
 				'type'        => (string) get_post_meta( $post_id, 'type_evenement', true ),
 				'config'      => is_array( $config ) ? $config : [],
 				'lieu'        => (string) get_post_meta( $post_id, 'lieu', true ),
@@ -754,6 +765,23 @@ Linktree|https://linktr.ee/acat"',
 
 	public static function format_date_short( DateTimeImmutable $date ): string {
 		return $date->format( 'j' ) . ' ' . self::month_abbr( (int) $date->format( 'n' ) ) . ' ' . $date->format( 'Y' );
+	}
+
+	private static function has_day_precision( string $raw ): bool {
+		$raw = trim( $raw );
+		if ( '' === $raw ) {
+			return true;
+		}
+		if ( 1 === preg_match( '/^\d{4}(0[1-9]|1[0-2])$/', $raw ) ) {
+			return false;
+		}
+		if ( 1 === preg_match( '/^\d{4}\-(0[1-9]|1[0-2])$/', $raw ) ) {
+			return false;
+		}
+		if ( 1 === preg_match( '/^(0[1-9]|1[0-2])\/\d{4}$/', $raw ) ) {
+			return false;
+		}
+		return true;
 	}
 
 	public static function hover_term_shortcode( array $atts = [] ): string {
