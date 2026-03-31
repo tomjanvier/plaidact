@@ -10,6 +10,7 @@
 .pa-month-dot{position:absolute;left:-2rem;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;background:var(--pa-purple);border:2px solid #fff;box-shadow:0 0 0 2px #dfcfee}
 .pa-month-count{margin-left:auto;background:var(--pa-purple-soft);color:var(--pa-text-muted);border-radius:2rem;padding:.08rem .48rem;font-size:.72rem}
 .pa-event-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.55rem}
+.pa-month-events-columns{display:grid;grid-template-columns:1fr;gap:.6rem}
 .pa-event{display:grid;grid-template-columns:2.75rem 1fr auto auto;grid-template-areas:"date body logo action";align-items:center;gap:.7rem;min-height:3rem;background:#fff;border:1px solid #e6daf4;border-radius:var(--pa-radius);padding:.55rem .65rem;box-shadow:0 6px 18px rgba(42,23,56,.06)}
 .pa-event:hover{border-color:#cfbbe6;box-shadow:0 10px 22px rgba(42,23,56,.12)}
 .pa-event--important{background:#fbf7ff;border-color:#cbb2e6}.pa-event--global{background:#f6f9ff;border-color:#bfd9f0}.pa-event--detail{opacity:.86}.pa-event--continuation{background:#f2ebfb;border-style:dashed}
@@ -26,5 +27,6 @@
 .pa-timeline--horizontal .pa-months-wrapper:before,.pa-timeline--horizontal .pa-month-dot{display:none}
 .pa-timeline--horizontal .pa-month-block{margin-bottom:0;border:1px solid #eadff8;border-radius:12px;padding:.7rem;background:#fff}
 .pa-timeline--horizontal .pa-event-list{display:grid;grid-template-columns:1fr;gap:.6rem}
+.pa-timeline--horizontal .pa-month-block--multi-col .pa-month-events-columns{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.75rem}
 @media (max-width:600px){.pa-timeline{padding:1.1rem .82rem 2rem}.pa-months-wrapper{padding-left:0}.pa-months-wrapper:before,.pa-month-dot{display:none}.pa-month-heading{background:var(--pa-purple-soft);border-radius:8px;padding:.35rem .63rem}.pa-years-nav{position:static;border-radius:14px}.pa-event{grid-template-columns:2.5rem 1fr auto;grid-template-areas:"date body action" ". logo ."}.pa-event-title{white-space:normal;font-size:.85rem}.pa-timeline--horizontal .pa-months-wrapper{grid-template-columns:1fr}}
 @media print{.pa-event--noprint,.pa-years-nav,.pa-event-cta{display:none!important}.pa-event{border:1px solid #ccc!important;box-shadow:none!important}}

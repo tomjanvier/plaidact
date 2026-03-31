@@ -10,6 +10,7 @@ $data           = $data ?? [];
 $title_override = $title_override ?? '';
 $layout         = isset( $layout ) && 'horizontal' === $layout ? 'horizontal' : 'vertical';
 $columns        = isset( $columns ) ? max( 1, absint( $columns ) ) : 3;
+$events_per_column = isset( $events_per_column ) ? absint( $events_per_column ) : 0;
 $years          = $data['years'] ?? [];
 $term           = $data['term'] ?? null;
 
@@ -35,14 +36,22 @@ $slug  = $term instanceof WP_Term ? $term->slug : 'timeline';
 				<h3 class="pa-year-heading"><span><?php echo esc_html( (string) $year_data['year'] ); ?></span></h3>
 				<div class="pa-months-wrapper">
 					<?php foreach ( $year_data['months'] as $month_data ) : ?>
-						<div class="pa-month-block">
+						<?php
+						$event_columns = [ $month_data['events'] ];
+						if ( 'horizontal' === $layout && $events_per_column > 0 ) {
+							$event_columns = array_chunk( $month_data['events'], $events_per_column );
+						}
+						?>
+						<div class="pa-month-block <?php echo count( $event_columns ) > 1 ? 'pa-month-block--multi-col' : ''; ?>">
 							<h4 class="pa-month-heading">
 								<span class="pa-month-dot" aria-hidden="true"></span>
 								<span class="pa-month-label"><?php echo esc_html( $month_data['month_name'] ); ?></span>
 								<span class="pa-month-count"><?php echo esc_html( (string) count( $month_data['events'] ) ); ?></span>
 							</h4>
-							<ul class="pa-event-list" role="list">
-								<?php foreach ( $month_data['events'] as $event ) : ?>
+							<div class="pa-month-events-columns">
+								<?php foreach ( $event_columns as $column_events ) : ?>
+								<ul class="pa-event-list" role="list">
+								<?php foreach ( $column_events as $event ) : ?>
 									<?php
 									$classes = [ 'pa-event' ];
 									foreach ( $event['config'] as $cfg ) {
@@ -58,7 +67,9 @@ $slug  = $term instanceof WP_Term ? $term->slug : 'timeline';
 											<?php if ( ! empty( $event['is_continuation'] ) ) : ?>
 												<span class="pa-date-cont">↻</span>
 											<?php else : ?>
-												<span class="pa-date-day"><?php echo esc_html( $event['date_debut']->format( 'j' ) ); ?></span>
+												<?php if ( ! empty( $event['has_day'] ) ) : ?>
+													<span class="pa-date-day"><?php echo esc_html( $event['date_debut']->format( 'j' ) ); ?></span>
+												<?php endif; ?>
 												<span class="pa-date-month"><?php echo esc_html( Plugin::month_abbr( (int) $event['date_debut']->format( 'n' ) ) ); ?></span>
 											<?php endif; ?>
 										</div>
@@ -67,7 +78,7 @@ $slug  = $term instanceof WP_Term ? $term->slug : 'timeline';
 												<span class="pa-event-title"><?php echo esc_html( $event['title'] ); ?></span>
 											</a>
 											<div class="pa-event-meta">
-												<?php if ( ! empty( $event['lieu'] ) ) : ?><span class="pa-event-lieu">📍 <?php echo esc_html( $event['lieu'] ); ?></span><?php endif; ?>
+												<?php if ( ! empty( $event['lieu'] ) ) : ?><span class="pa-event-lieu"><?php echo esc_html( $event['lieu'] ); ?></span><?php endif; ?>
 												<?php if ( '' !== $period ) : ?><span class="pa-event-period"><?php echo esc_html( $period ); ?></span><?php endif; ?>
 											</div>
 										</div>
@@ -75,7 +86,9 @@ $slug  = $term instanceof WP_Term ? $term->slug : 'timeline';
 										<div class="pa-event-action"><a href="<?php echo esc_url( $event['url'] ); ?>" class="pa-event-cta" <?php echo $event['is_external'] ? 'target="_blank" rel="noopener noreferrer"' : ''; ?>>→</a></div>
 									</li>
 								<?php endforeach; ?>
-							</ul>
+								</ul>
+								<?php endforeach; ?>
+							</div>
 						</div>
 					<?php endforeach; ?>
 				</div>

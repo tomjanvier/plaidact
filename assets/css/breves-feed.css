@@ -26,8 +26,23 @@
 }
 
 .plaidact-breves-list {
-  display: grid;
+  display: flex;
   gap: 0.8rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0.25rem;
+  padding: 0.2rem 0.15rem 0.45rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.plaidact-breves-list::-webkit-scrollbar {
+  height: 0.55rem;
+}
+
+.plaidact-breves-list::-webkit-scrollbar-thumb {
+  background: #ccb9e1;
+  border-radius: 999px;
 }
 
 .plaidact-breves-ticker {
@@ -94,6 +109,8 @@
 
 .plaidact-breve {
   list-style: none;
+  flex: 0 0 min(88vw, 380px);
+  scroll-snap-align: start;
 }
 
 .plaidact-breve__link {
@@ -227,6 +244,9 @@
 @media (min-width: 720px) {
   .plaidact-breve__link {
     padding: 1.05rem 1.15rem;
+  }
+  .plaidact-breve {
+    flex-basis: min(52vw, 430px);
   }
 }
 

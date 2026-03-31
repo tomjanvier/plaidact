@@ -37,7 +37,7 @@ $excerpt   = wp_trim_words( wp_strip_all_tags( get_the_excerpt( $post_id ) ), 24
 		<?php endif; ?>
 
 		<?php if ( ! empty( $link_data['is_external'] ) ) : ?>
-			<span class="plaidact-breve__external"><?php esc_html_e( 'Lien externe', 'plaidact-breves-feed' ); ?></span>
+			<span class="plaidact-breve__external"><?php esc_html_e( 'En savoir plus', 'plaidact-breves-feed' ); ?></span>
 		<?php endif; ?>
 	</a>
 </article>
