@@ -799,51 +799,61 @@ Linktree|https://linktr.ee/acat"',
 			return $content;
 		}
 
-		$definitions = get_posts(
-			[
-				'post_type'      => 'pa_definition',
-				'post_status'    => 'publish',
-				'posts_per_page' => -1,
-				'orderby'        => 'title',
-				'order'          => 'ASC',
-				'fields'         => 'ids',
-			]
-		);
-		$associations = get_posts(
-			[
-				'post_type'      => [ self::ASSO_POST_TYPE ],
-				'post_status'    => 'publish',
-				'posts_per_page' => -1,
-				'orderby'        => 'title',
-				'order'          => 'ASC',
-				'fields'         => 'ids',
-			]
-		);
+		$terms_map = get_transient( 'plaidact_hover_terms_map_v1' );
+		if ( ! is_array( $terms_map ) ) {
+			$terms_map = [];
 
-		$terms_map = [];
-		foreach ( $definitions as $post_id ) {
-			$title = trim( (string) get_the_title( $post_id ) );
-			$slug  = get_post_field( 'post_name', $post_id );
-			if ( '' === $title || '' === $slug ) {
-				continue;
+			$definitions = get_posts(
+				[
+					'post_type'      => 'pa_definition',
+					'post_status'    => 'publish',
+					'posts_per_page' => -1,
+					'orderby'        => 'title',
+					'order'          => 'ASC',
+				]
+			);
+			$associations = get_posts(
+				[
+					'post_type'      => [ self::ASSO_POST_TYPE ],
+					'post_status'    => 'publish',
+					'posts_per_page' => -1,
+					'orderby'        => 'title',
+					'order'          => 'ASC',
+				]
+			);
+
+			foreach ( $definitions as $post ) {
+				if ( ! $post instanceof WP_Post ) {
+					continue;
+				}
+				$title = trim( (string) $post->post_title );
+				$slug  = (string) $post->post_name;
+				if ( '' === $title || '' === $slug ) {
+					continue;
+				}
+				$terms_map[ mb_strtolower( $title ) ] = [
+					'text'   => $title,
+					'type'   => 'definition',
+					'id'     => $slug,
+					'needle' => preg_quote( $title, '/' ),
+				];
 			}
-			$terms_map[ mb_strtolower( $title ) ] = [
-				'text' => $title,
-				'type' => 'definition',
-				'id'   => (string) $slug,
-			];
-		}
-		foreach ( $associations as $post_id ) {
-			$title = trim( (string) get_the_title( $post_id ) );
-			$slug  = get_post_field( 'post_name', $post_id );
-			if ( '' === $title || '' === $slug ) {
-				continue;
+			foreach ( $associations as $post ) {
+				if ( ! $post instanceof WP_Post ) {
+					continue;
+				}
+				$title = trim( (string) $post->post_title );
+				$slug  = (string) $post->post_name;
+				if ( '' === $title || '' === $slug ) {
+					continue;
+				}
+				$terms_map[ mb_strtolower( $title ) ] = [
+					'text'   => $title,
+					'type'   => 'asso',
+					'id'     => $slug,
+					'needle' => preg_quote( $title, '/' ),
+				];
 			}
-			$terms_map[ mb_strtolower( $title ) ] = [
-				'text' => $title,
-				'type' => 'asso',
-				'id'   => (string) $slug,
-			];
 		}
 
 		if ( empty( $terms_map ) ) {
@@ -854,12 +864,14 @@ Linktree|https://linktr.ee/acat"',
 			$terms_map,
 			static fn( array $a, array $b ): int => mb_strlen( (string) $b['text'] ) <=> mb_strlen( (string) $a['text'] )
 		);
+		set_transient( 'plaidact_hover_terms_map_v1', $terms_map, HOUR_IN_SECONDS );
 
 		$parts = preg_split( '/(<[^>]+>)/', $content, -1, PREG_SPLIT_DELIM_CAPTURE );
 		if ( false === $parts ) {
 			return $content;
 		}
 		$is_inside_link = false;
+		$replaced_terms = [];
 		foreach ( $parts as $index => $part ) {
 			if ( '' === $part ) {
 				continue;
@@ -876,11 +888,15 @@ Linktree|https://linktr.ee/acat"',
 			if ( $is_inside_link ) {
 				continue;
 			}
-			foreach ( $terms_map as $item ) {
-				$needle = preg_quote( (string) $item['text'], '/' );
+			foreach ( $terms_map as $key => $item ) {
+				if ( isset( $replaced_terms[ $key ] ) ) {
+					continue;
+				}
+				$needle = (string) ( $item['needle'] ?? preg_quote( (string) $item['text'], '/' ) );
 				$parts[ $index ] = (string) preg_replace_callback(
 					'/\b(' . $needle . ')\b/ui',
-					static function ( array $matches ) use ( $item ): string {
+					static function ( array $matches ) use ( $item, &$replaced_terms, $key ): string {
+						$replaced_terms[ $key ] = true;
 						return self::render_hover_token( (string) $item['type'], (string) $item['id'], (string) $matches[1] );
 					},
 					(string) $parts[ $index ],
