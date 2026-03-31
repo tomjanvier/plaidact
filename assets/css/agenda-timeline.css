@@ -21,5 +21,10 @@
 .pa-event-logo{grid-area:logo;width:2.25rem;height:2.25rem}.pa-event-logo img{width:100%;height:100%;object-fit:contain;border-radius:6px;border:1px solid #efe4fb;background:#fff}
 .pa-event-action{grid-area:action}.pa-event-cta{display:flex;align-items:center;justify-content:center;width:1.95rem;height:1.95rem;border-radius:50%;background:#efe6fa;color:var(--pa-purple);text-decoration:none;font-weight:700}
 .pa-event-cta:hover,.pa-event-cta:focus{background:var(--pa-purple);color:#fff}
-@media (max-width:600px){.pa-timeline{padding:1.1rem .82rem 2rem}.pa-months-wrapper{padding-left:0}.pa-months-wrapper:before,.pa-month-dot{display:none}.pa-month-heading{background:var(--pa-purple-soft);border-radius:8px;padding:.35rem .63rem}.pa-years-nav{position:static;border-radius:14px}.pa-event{grid-template-columns:2.5rem 1fr auto;grid-template-areas:"date body action" ". logo ."}.pa-event-title{white-space:normal;font-size:.85rem}}
+.pa-timeline--horizontal .pa-year-block{margin-bottom:2.2rem}
+.pa-timeline--horizontal .pa-months-wrapper{padding-left:0;display:grid;grid-template-columns:repeat(var(--pa-timeline-columns,3),minmax(240px,1fr));gap:1rem}
+.pa-timeline--horizontal .pa-months-wrapper:before,.pa-timeline--horizontal .pa-month-dot{display:none}
+.pa-timeline--horizontal .pa-month-block{margin-bottom:0;border:1px solid #eadff8;border-radius:12px;padding:.7rem;background:#fff}
+.pa-timeline--horizontal .pa-event-list{display:grid;grid-template-columns:1fr;gap:.6rem}
+@media (max-width:600px){.pa-timeline{padding:1.1rem .82rem 2rem}.pa-months-wrapper{padding-left:0}.pa-months-wrapper:before,.pa-month-dot{display:none}.pa-month-heading{background:var(--pa-purple-soft);border-radius:8px;padding:.35rem .63rem}.pa-years-nav{position:static;border-radius:14px}.pa-event{grid-template-columns:2.5rem 1fr auto;grid-template-areas:"date body action" ". logo ."}.pa-event-title{white-space:normal;font-size:.85rem}.pa-timeline--horizontal .pa-months-wrapper{grid-template-columns:1fr}}
 @media print{.pa-event--noprint,.pa-years-nav,.pa-event-cta{display:none!important}.pa-event{border:1px solid #ccc!important;box-shadow:none!important}}

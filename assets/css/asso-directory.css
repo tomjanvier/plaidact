@@ -47,6 +47,8 @@
 .plaidact-asso-card__excerpt{font-size:.88rem;line-height:1.45;color:#403053}
 .plaidact-asso-card__actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem}
 .plaidact-asso-pagination{margin-top:1rem}
+.plaidact-asso-pagination .page-numbers{display:inline-flex;align-items:center;justify-content:center;min-width:2rem;height:2rem;padding:0 .55rem;margin:.15rem;border-radius:999px;border:1px solid #d8c8ea;color:var(--plaid-purple);text-decoration:none;font-weight:700;background:#fff}
+.plaidact-asso-pagination .page-numbers.current,.plaidact-asso-pagination .page-numbers:hover{background:var(--plaid-purple);color:#fff;border-color:var(--plaid-purple)}
 .plaidact-asso-empty{background:var(--plaid-lilac);border-radius:12px;padding:.8rem;color:#3f3352}
 
 .plaidact-asso-single{background:#fff;border:1px solid #efe5f7;border-radius:20px;padding:1rem;box-shadow:0 12px 30px rgba(42,23,56,.08)}

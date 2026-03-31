@@ -8,13 +8,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $data           = $data ?? [];
 $title_override = $title_override ?? '';
+$layout         = isset( $layout ) && 'horizontal' === $layout ? 'horizontal' : 'vertical';
+$columns        = isset( $columns ) ? max( 1, absint( $columns ) ) : 3;
 $years          = $data['years'] ?? [];
 $term           = $data['term'] ?? null;
 
 $title = $title_override ?: ( $term instanceof WP_Term ? $term->name : __( 'Agenda', 'plaidact-breves-feed' ) );
 $slug  = $term instanceof WP_Term ? $term->slug : 'timeline';
 ?>
-<section class="pa-timeline" id="pa-timeline-<?php echo esc_attr( $slug ); ?>" aria-label="<?php echo esc_attr( $title ); ?>">
+<section class="pa-timeline pa-timeline--<?php echo esc_attr( $layout ); ?>" id="pa-timeline-<?php echo esc_attr( $slug ); ?>" aria-label="<?php echo esc_attr( $title ); ?>" style="--pa-timeline-columns:<?php echo esc_attr( (string) $columns ); ?>">
 	<h2 class="pa-timeline-title"><?php echo esc_html( $title ); ?></h2>
 
 	<?php if ( count( $years ) > 1 ) : ?>
