@@ -361,7 +361,7 @@ Linktree|https://linktr.ee/acat"',
 		global $post;
 		$load_timeline = is_tax( 'agenda_timeline' );
 		$load_asso     = is_post_type_archive( self::ASSO_POST_TYPE ) || is_singular( self::ASSO_POST_TYPE );
-		$load_hover    = $load_asso;
+		$load_hover    = ! is_admin();
 
 		if ( $post instanceof WP_Post ) {
 			$load_timeline = $load_timeline || has_shortcode( $post->post_content, 'plaidact_timeline' );
@@ -369,7 +369,6 @@ Linktree|https://linktr.ee/acat"',
 			$load_hover    = $load_hover || false !== strpos( $post->post_content, '[[' ) || has_shortcode( $post->post_content, 'plaidact_hover_term' );
 		}
 
-		$load_hover = $load_hover || is_singular( 'breves' ) || is_singular( 'agenda' );
 
 		if ( $load_timeline ) {
 			wp_enqueue_style( 'plaidact-agenda-timeline', PLAIDACT_BREVES_FEED_URL . 'assets/css/agenda-timeline.css', [], PLAIDACT_BREVES_FEED_VERSION );
@@ -916,7 +915,6 @@ Linktree|https://linktr.ee/acat"',
 			return $content;
 		}
 		$is_inside_link = false;
-		$replaced_terms = [];
 		foreach ( $parts as $index => $part ) {
 			if ( '' === $part ) {
 				continue;
@@ -933,24 +931,38 @@ Linktree|https://linktr.ee/acat"',
 			if ( $is_inside_link ) {
 				continue;
 			}
-			foreach ( $terms_map as $key => $item ) {
-				if ( isset( $replaced_terms[ $key ] ) ) {
+			foreach ( $terms_map as $item ) {
+				$needle = self::build_hover_needle_pattern( (string) ( $item['text'] ?? '' ) );
+				if ( '' === $needle ) {
 					continue;
 				}
-				$needle = (string) ( $item['needle'] ?? preg_quote( (string) $item['text'], '/' ) );
+
 				$parts[ $index ] = (string) preg_replace_callback(
-					'/\b(' . $needle . ')\b/ui',
-					static function ( array $matches ) use ( $item, &$replaced_terms, $key ): string {
-						$replaced_terms[ $key ] = true;
+					'/(?<![\p{L}\p{N}])(' . $needle . ')(?![\p{L}\p{N}])/ui',
+					static function ( array $matches ) use ( $item ): string {
 						return self::render_hover_token( (string) $item['type'], (string) $item['id'], (string) $matches[1] );
 					},
-					(string) $parts[ $index ],
-					1
+					(string) $parts[ $index ]
 				);
 			}
 		}
 
 		return implode( '', $parts );
+	}
+
+
+	private static function build_hover_needle_pattern( string $text ): string {
+		$text = trim( $text );
+		if ( '' === $text ) {
+			return '';
+		}
+
+		$pattern = preg_quote( $text, '/' );
+		$pattern = str_replace( '\ ', '[\s\x{00A0}]+', $pattern );
+		$pattern = str_replace( [ "\'", '’' ], "[’']", $pattern );
+		$pattern = str_replace( '\-', '[\-\x{2010}\x{2011}\x{2012}\x{2013}\x{2014}]', $pattern );
+
+		return $pattern;
 	}
 
 	private static function render_hover_token( string $type, string $id, string $text ): string {
