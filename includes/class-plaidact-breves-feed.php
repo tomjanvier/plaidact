@@ -25,9 +25,12 @@ final class PlaidAct_Breves_Feed {
 		add_action( 'init', array( $this, 'register_breves_post_type' ), 1 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_shortcode( 'plaidact_breves', array( $this, 'render_shortcode' ) );
+		add_shortcode( 'plaidact_breves_latest_dropdown', array( $this, 'render_latest_dropdown_shortcode' ) );
+		add_shortcode( 'plaidact_breves_timeline', array( $this, 'render_shortcode' ) );
 		add_shortcode( 'plaidact_breves_all', array( $this, 'render_all_breves_grid_shortcode' ) );
 		add_filter( 'template_include', array( $this, 'register_archive_template' ) );
 		add_filter( 'single_template', array( $this, 'register_single_template' ) );
+		add_action( 'admin_menu', array( $this, 'register_export_page' ) );
 	}
 
 	public function load_textdomain(): void {
@@ -120,6 +123,59 @@ final class PlaidAct_Breves_Feed {
 				'paged' => $paged,
 			)
 		);
+		wp_reset_postdata();
+		return (string) ob_get_clean();
+	}
+
+	public function render_latest_dropdown_shortcode( array $atts = array() ): string {
+		$atts = shortcode_atts(
+			array(
+				'limit' => '20',
+				'label' => __( 'Dernières actualités', 'plaidact-breves-feed' ),
+			),
+			$atts,
+			'plaidact_breves_latest_dropdown'
+		);
+		$limit = max( 1, absint( $atts['limit'] ) );
+		$query = new WP_Query(
+			array(
+				'post_type'              => 'breves',
+				'post_status'            => 'publish',
+				'posts_per_page'         => $limit,
+				'orderby'                => 'date',
+				'order'                  => 'DESC',
+				'ignore_sticky_posts'    => true,
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			)
+		);
+
+		if ( ! $query->have_posts() ) {
+			return '';
+		}
+
+		wp_enqueue_style( 'plaidact-breves-feed' );
+
+		ob_start();
+		?>
+		<div class="plaidact-breves-dropdown-wrap">
+			<label class="screen-reader-text" for="plaidact-breves-dropdown"><?php echo esc_html( (string) $atts['label'] ); ?></label>
+			<select id="plaidact-breves-dropdown" class="plaidact-breves-dropdown" onchange="if(this.value){window.open(this.value,'_self');}">
+				<option value=""><?php echo esc_html( (string) $atts['label'] ); ?></option>
+				<?php while ( $query->have_posts() ) : ?>
+					<?php
+					$query->the_post();
+					$post_id = get_the_ID();
+					$link    = $this->get_link_data( $post_id );
+					?>
+					<option value="<?php echo esc_url( (string) $link['url'] ); ?>">
+						<?php echo esc_html( get_the_date( 'd/m/Y', $post_id ) . ' — ' . get_the_title( $post_id ) ); ?>
+					</option>
+				<?php endwhile; ?>
+			</select>
+		</div>
+		<?php
 		wp_reset_postdata();
 		return (string) ob_get_clean();
 	}
@@ -257,6 +313,65 @@ final class PlaidAct_Breves_Feed {
 
 		extract( $args, EXTR_SKIP );
 		require $template;
+	}
+
+	public function register_export_page(): void {
+		add_submenu_page(
+			'edit.php?post_type=breves',
+			__( 'Export newsletter', 'plaidact-breves-feed' ),
+			__( 'Export newsletter', 'plaidact-breves-feed' ),
+			'manage_options',
+			'plaidact-breves-export',
+			array( $this, 'render_export_page' )
+		);
+	}
+
+	public function render_export_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$days  = 35;
+		$posts = get_posts(
+			array(
+				'post_type'              => 'breves',
+				'post_status'            => 'publish',
+				'posts_per_page'         => -1,
+				'orderby'                => 'date',
+				'order'                  => 'DESC',
+				'date_query'             => array(
+					array(
+						'after'     => gmdate( 'Y-m-d', strtotime( '-' . $days . ' days' ) ),
+						'inclusive' => true,
+					),
+				),
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			)
+		);
+
+		$lines = array();
+		foreach ( $posts as $post ) {
+			$permalink = get_permalink( $post );
+			if ( ! is_string( $permalink ) ) {
+				$permalink = '';
+			}
+			$lines[] = sprintf(
+				"- %s — %s\n%s",
+				get_the_date( 'd/m/Y', $post ),
+				wp_strip_all_tags( get_the_title( $post ) ),
+				$permalink
+			);
+		}
+		$payload = implode( "\n\n", $lines );
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Export newsletter (35 derniers jours)', 'plaidact-breves-feed' ); ?></h1>
+			<p><?php esc_html_e( 'Copiez/collez ce texte dans votre newsletter.', 'plaidact-breves-feed' ); ?></p>
+			<textarea readonly rows="18" style="width:100%;font-family:monospace;"><?php echo esc_textarea( $payload ); ?></textarea>
+		</div>
+		<?php
 	}
 
 	private function get_current_page( string $query_var = 'paged' ): int {

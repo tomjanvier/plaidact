@@ -68,3 +68,12 @@
 	.plaidact-asso-single__meta-grid{grid-template-columns:1fr 1fr}
 }
 @media (min-width:1024px){.plaidact-asso-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.plaidact-hover-term{position:relative;cursor:help;text-decoration:underline dotted #8b75a8;text-underline-offset:2px}
+.plaidact-hover-card{position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);width:min(320px,80vw);display:none;z-index:50}
+.plaidact-hover-term:hover .plaidact-hover-card,.plaidact-hover-term:focus .plaidact-hover-card,.plaidact-hover-term:focus-within .plaidact-hover-card{display:block}
+.plaidact-hover-card__inner{display:block;background:#fff;border:1px solid #dccfed;border-radius:12px;box-shadow:0 15px 35px rgba(42,23,56,.2);padding:.75rem}
+.plaidact-hover-card__logo{width:52px;height:52px;object-fit:contain;border:1px solid #eee;border-radius:8px;background:#fff;display:block;margin-bottom:.45rem}
+.plaidact-hover-card__title{display:block;color:var(--plaid-purple);margin-bottom:.25rem}
+.plaidact-hover-card__desc{margin:0;color:var(--plaid-text);font-size:.84rem;line-height:1.4}
+.plaidact-hover-card__btn{margin-top:.5rem;display:inline-flex;background:var(--plaid-purple);color:#fff;padding:.35rem .65rem;border-radius:999px;text-decoration:none;font-size:.78rem;font-weight:700}
