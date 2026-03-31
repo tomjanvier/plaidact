@@ -25,6 +25,7 @@
 	}
 
 	document.addEventListener('DOMContentLoaded', function () {
+		var terms = [];
 		document.querySelectorAll('.plaidact-hover-term').forEach(function (term) {
 			var card = term.querySelector('.plaidact-hover-card');
 			if (!card) {
@@ -71,11 +72,7 @@
 				event.preventDefault();
 			});
 
-			document.addEventListener('click', function (event) {
-				if (!term.contains(event.target)) {
-					closeImmediately();
-				}
-			});
+			terms.push({ term: term, closeImmediately: closeImmediately });
 
 			window.addEventListener('scroll', function () {
 				if (card.classList.contains('is-open')) {
@@ -85,6 +82,14 @@
 			window.addEventListener('resize', function () {
 				if (card.classList.contains('is-open')) {
 					positionCard(term, card);
+				}
+			});
+		});
+
+		document.addEventListener('click', function (event) {
+			terms.forEach(function (entry) {
+				if (!entry.term.contains(event.target)) {
+					entry.closeImmediately();
 				}
 			});
 		});
