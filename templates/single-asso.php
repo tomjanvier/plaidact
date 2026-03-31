@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 get_header();
+$asso_taxonomy = Plugin::get_asso_taxonomy();
 ?>
 <main id="site-content" class="plaidact-asso-single-wrap">
 	<?php while ( have_posts() ) : the_post(); ?>
@@ -18,7 +19,7 @@ get_header();
 				<div class="plaidact-asso-single__hero">
 					<h1><?php the_title(); ?></h1>
 					<div class="plaidact-asso-tags">
-						<?php foreach ( ( get_the_terms( get_the_ID(), 'cause' ) ?: [] ) as $term ) : ?><span><?php echo esc_html( $term->name ); ?></span><?php endforeach; ?>
+						<?php foreach ( ( get_the_terms( get_the_ID(), $asso_taxonomy ) ?: [] ) as $term ) : ?><span><?php echo esc_html( $term->name ); ?></span><?php endforeach; ?>
 					</div>
 					<?php if ( get_field( 'resume_court' ) ) : ?>
 						<p class="plaidact-asso-single__summary"><?php echo esc_html( (string) get_field( 'resume_court' ) ); ?></p>
@@ -47,7 +48,7 @@ get_header();
 				<div>
 					<h2><?php esc_html_e( 'Causes', 'plaidact-breves-feed' ); ?></h2>
 					<div class="plaidact-asso-tags">
-						<?php foreach ( ( get_the_terms( get_the_ID(), 'cause' ) ?: [] ) as $term ) : ?><span><?php echo esc_html( $term->name ); ?></span><?php endforeach; ?>
+						<?php foreach ( ( get_the_terms( get_the_ID(), $asso_taxonomy ) ?: [] ) as $term ) : ?><span><?php echo esc_html( $term->name ); ?></span><?php endforeach; ?>
 					</div>
 				</div>
 			</section>

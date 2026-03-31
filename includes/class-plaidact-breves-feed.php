@@ -26,7 +26,7 @@ final class PlaidAct_Breves_Feed {
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_shortcode( 'plaidact_breves', array( $this, 'render_shortcode' ) );
 		add_shortcode( 'plaidact_breves_latest_dropdown', array( $this, 'render_latest_dropdown_shortcode' ) );
-		add_shortcode( 'plaidact_breves_timeline', array( $this, 'render_shortcode' ) );
+		add_shortcode( 'plaidact_breves_timeline', array( $this, 'render_timeline_shortcode' ) );
 		add_shortcode( 'plaidact_breves_all', array( $this, 'render_all_breves_grid_shortcode' ) );
 		add_filter( 'template_include', array( $this, 'register_archive_template' ) );
 		add_filter( 'single_template', array( $this, 'register_single_template' ) );
@@ -73,6 +73,27 @@ final class PlaidAct_Breves_Feed {
 			),
 			$atts,
 			'plaidact_breves'
+		);
+
+		return $this->render_feed(
+			array(
+				'posts_per_page' => absint( $atts['posts_per_page'] ),
+				'paged'          => 1,
+				'pagination_var' => 'breves_page',
+				'feed_title'     => (string) $atts['title'],
+				'is_ticker'      => false,
+			)
+		);
+	}
+
+	public function render_timeline_shortcode( array $atts = array() ): string {
+		$atts = shortcode_atts(
+			array(
+				'posts_per_page' => '12',
+				'title'          => '',
+			),
+			$atts,
+			'plaidact_breves_timeline'
 		);
 
 		return $this->render_feed(

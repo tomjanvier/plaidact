@@ -7,9 +7,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $posts_per_page = isset( $posts_per_page ) ? max( 1, absint( $posts_per_page ) ) : 9;
+$asso_taxonomy = Plugin::get_asso_taxonomy();
 $filters = Plugin::get_asso_filters_from_request();
 $query   = new WP_Query( Plugin::get_asso_query_args( $filters, $posts_per_page, isset( $fixed_cause ) ? (string) $fixed_cause : '' ) );
-$causes  = get_terms( [ 'taxonomy' => 'cause', 'hide_empty' => false ] );
+$causes  = get_terms( [ 'taxonomy' => $asso_taxonomy, 'hide_empty' => false ] );
 $fixed_cause = isset( $fixed_cause ) ? sanitize_title( (string) $fixed_cause ) : '';
 $pagination_key = isset( $pagination_key ) && '' !== $pagination_key ? sanitize_key( (string) $pagination_key ) : 'asso_page';
 ?>

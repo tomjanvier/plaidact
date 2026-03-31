@@ -12,6 +12,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Plugin {
+	private const ASSO_POST_TYPE = 'associations';
+	private const ASSO_TAXONOMY  = 'associations';
+
 	/** @var array<string,string> */
 	private const SOCIAL_NETWORKS = [
 		'facebook'  => 'Facebook',
@@ -38,9 +41,9 @@ final class Plugin {
 		add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_assets' ] );
 		add_shortcode( 'plaidact_timeline', [ __CLASS__, 'timeline_shortcode' ] );
 		add_shortcode( 'plaidact_asso_directory', [ __CLASS__, 'asso_directory_shortcode' ] );
-		add_shortcode( 'plaidact_ong_directory', [ __CLASS__, 'asso_directory_shortcode' ] ); // legacy
 		add_shortcode( 'plaidact_hover_term', [ __CLASS__, 'hover_term_shortcode' ] );
 		add_filter( 'the_content', [ __CLASS__, 'replace_hover_tokens_in_content' ], 12 );
+		add_filter( 'the_content', [ __CLASS__, 'auto_inject_hover_terms_in_content' ], 13 );
 		add_filter( 'template_include', [ __CLASS__, 'maybe_use_plugin_templates' ] );
 		add_filter( 'theme_page_templates', [ __CLASS__, 'register_page_templates' ] );
 		add_filter( 'template_include', [ __CLASS__, 'handle_page_template' ], 99 );
@@ -99,7 +102,7 @@ final class Plugin {
 
 	public static function register_asso_cpt_and_taxonomies(): void {
 		register_post_type(
-			'ong',
+			self::ASSO_POST_TYPE,
 			[
 				'labels' => [
 					'name'          => __( 'Associations', 'plaidact-breves-feed' ),
@@ -107,8 +110,8 @@ final class Plugin {
 					'menu_name'     => __( 'Répertoire Asso', 'plaidact-breves-feed' ),
 				],
 				'public'             => true,
-				'has_archive'        => 'asso',
-				'rewrite'            => [ 'slug' => 'asso', 'with_front' => false ],
+				'has_archive'        => 'associations',
+				'rewrite'            => [ 'slug' => 'associations', 'with_front' => false ],
 				'show_in_rest'       => true,
 				'menu_icon'          => 'dashicons-groups',
 				'supports'           => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
@@ -117,18 +120,18 @@ final class Plugin {
 		);
 
 		register_taxonomy(
-			'cause',
-			[ 'ong' ],
+			self::ASSO_TAXONOMY,
+			[ self::ASSO_POST_TYPE ],
 			[
 				'labels' => [
-					'name'          => __( 'Causes', 'plaidact-breves-feed' ),
-					'singular_name' => __( 'Cause', 'plaidact-breves-feed' ),
+					'name'          => __( 'Associations (taxonomie)', 'plaidact-breves-feed' ),
+					'singular_name' => __( 'Association (taxonomie)', 'plaidact-breves-feed' ),
 				],
 				'public'            => true,
 				'hierarchical'      => true,
 				'show_in_rest'      => true,
 				'show_admin_column' => true,
-				'rewrite'           => [ 'slug' => 'cause', 'with_front' => false ],
+				'rewrite'           => [ 'slug' => 'associations-categorie', 'with_front' => false ],
 			]
 		);
 	}
@@ -223,7 +226,7 @@ final class Plugin {
 
 	public static function register_asso_import_page(): void {
 		add_submenu_page(
-			'edit.php?post_type=ong',
+			'edit.php?post_type=' . self::ASSO_POST_TYPE,
 			__( 'Import associations', 'plaidact-breves-feed' ),
 			__( 'Import CSV', 'plaidact-breves-feed' ),
 			'manage_options',
@@ -338,11 +341,11 @@ Linktree|https://linktr.ee/acat"',
 	public static function enqueue_assets(): void {
 		global $post;
 		$load_timeline = is_tax( 'agenda_timeline' );
-		$load_asso     = is_post_type_archive( 'ong' ) || is_singular( 'ong' );
+		$load_asso     = is_post_type_archive( self::ASSO_POST_TYPE ) || is_singular( self::ASSO_POST_TYPE );
 
 		if ( $post instanceof WP_Post ) {
 			$load_timeline = $load_timeline || has_shortcode( $post->post_content, 'plaidact_timeline' );
-			$load_asso     = $load_asso || has_shortcode( $post->post_content, 'plaidact_asso_directory' ) || has_shortcode( $post->post_content, 'plaidact_ong_directory' );
+			$load_asso     = $load_asso || has_shortcode( $post->post_content, 'plaidact_asso_directory' );
 		}
 
 		if ( $load_timeline ) {
@@ -379,10 +382,13 @@ Linktree|https://linktr.ee/acat"',
 		if ( is_tax( 'agenda_timeline' ) ) {
 			return PLAIDACT_BREVES_FEED_PATH . 'templates/taxonomy-agenda_timeline.php';
 		}
-		if ( is_post_type_archive( 'ong' ) ) {
+		if ( is_tax( self::ASSO_TAXONOMY ) ) {
 			return PLAIDACT_BREVES_FEED_PATH . 'templates/archive-asso.php';
 		}
-		if ( is_singular( 'ong' ) ) {
+		if ( is_post_type_archive( self::ASSO_POST_TYPE ) ) {
+			return PLAIDACT_BREVES_FEED_PATH . 'templates/archive-asso.php';
+		}
+		if ( is_singular( self::ASSO_POST_TYPE ) ) {
 			return PLAIDACT_BREVES_FEED_PATH . 'templates/single-asso.php';
 		}
 
@@ -465,8 +471,9 @@ Linktree|https://linktr.ee/acat"',
 
 	/** @param array<string,mixed> $filters */
 	public static function get_asso_query_args( array $filters, int $posts_per_page = 9, string $fixed_cause = '' ): array {
+		$asso_taxonomy = self::ASSO_TAXONOMY;
 		$args = [
-			'post_type'      => 'ong',
+			'post_type'      => [ self::ASSO_POST_TYPE ],
 			'post_status'    => 'publish',
 			'posts_per_page' => $posts_per_page,
 			'orderby'        => 'title',
@@ -479,7 +486,7 @@ Linktree|https://linktr.ee/acat"',
 		if ( '' !== $target_cause ) {
 			$args['tax_query'] = [
 				[
-					'taxonomy' => 'cause',
+					'taxonomy' => $asso_taxonomy,
 					'field'    => 'slug',
 					'terms'    => $target_cause,
 				],
@@ -502,7 +509,7 @@ Linktree|https://linktr.ee/acat"',
 			'permalink'        => get_permalink( $post_id ),
 			'excerpt'          => wp_trim_words( $excerpt, 24, '…' ),
 			'site_url'         => $site_url,
-			'cause_terms'      => get_the_terms( $post_id, 'cause' ) ?: [],
+			'cause_terms'      => get_the_terms( $post_id, self::ASSO_TAXONOMY ) ?: [],
 		];
 	}
 
@@ -550,21 +557,22 @@ Linktree|https://linktr.ee/acat"',
 
 	/** @return array<int,array{post_id:int,title:string,permalink:string}> */
 	public static function get_similar_asso( int $post_id, int $limit = 3 ): array {
-		$terms = get_the_terms( $post_id, 'cause' );
+		$asso_taxonomy = self::ASSO_TAXONOMY;
+		$terms = get_the_terms( $post_id, $asso_taxonomy );
 		if ( ! $terms || is_wp_error( $terms ) ) {
 			return [];
 		}
 		$term_ids = wp_list_pluck( $terms, 'term_id' );
 		$query    = new WP_Query(
 			[
-				'post_type'      => 'ong',
+				'post_type'      => [ self::ASSO_POST_TYPE ],
 				'post_status'    => 'publish',
 				'posts_per_page' => $limit,
 				'post__not_in'   => [ $post_id ],
 				'orderby'        => 'rand',
 				'tax_query'      => [
 					[
-						'taxonomy' => 'cause',
+						'taxonomy' => $asso_taxonomy,
 						'field'    => 'term_id',
 						'terms'    => $term_ids,
 					],
@@ -786,6 +794,104 @@ Linktree|https://linktr.ee/acat"',
 		);
 	}
 
+	public static function auto_inject_hover_terms_in_content( string $content ): string {
+		if ( '' === trim( $content ) ) {
+			return $content;
+		}
+
+		$definitions = get_posts(
+			[
+				'post_type'      => 'pa_definition',
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'orderby'        => 'title',
+				'order'          => 'ASC',
+				'fields'         => 'ids',
+			]
+		);
+		$associations = get_posts(
+			[
+				'post_type'      => [ self::ASSO_POST_TYPE ],
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'orderby'        => 'title',
+				'order'          => 'ASC',
+				'fields'         => 'ids',
+			]
+		);
+
+		$terms_map = [];
+		foreach ( $definitions as $post_id ) {
+			$title = trim( (string) get_the_title( $post_id ) );
+			$slug  = get_post_field( 'post_name', $post_id );
+			if ( '' === $title || '' === $slug ) {
+				continue;
+			}
+			$terms_map[ mb_strtolower( $title ) ] = [
+				'text' => $title,
+				'type' => 'definition',
+				'id'   => (string) $slug,
+			];
+		}
+		foreach ( $associations as $post_id ) {
+			$title = trim( (string) get_the_title( $post_id ) );
+			$slug  = get_post_field( 'post_name', $post_id );
+			if ( '' === $title || '' === $slug ) {
+				continue;
+			}
+			$terms_map[ mb_strtolower( $title ) ] = [
+				'text' => $title,
+				'type' => 'asso',
+				'id'   => (string) $slug,
+			];
+		}
+
+		if ( empty( $terms_map ) ) {
+			return $content;
+		}
+
+		uasort(
+			$terms_map,
+			static fn( array $a, array $b ): int => mb_strlen( (string) $b['text'] ) <=> mb_strlen( (string) $a['text'] )
+		);
+
+		$parts = preg_split( '/(<[^>]+>)/', $content, -1, PREG_SPLIT_DELIM_CAPTURE );
+		if ( false === $parts ) {
+			return $content;
+		}
+		$is_inside_link = false;
+		foreach ( $parts as $index => $part ) {
+			if ( '' === $part ) {
+				continue;
+			}
+			if ( str_starts_with( $part, '<' ) ) {
+				if ( 1 === preg_match( '/^<a\b/i', $part ) ) {
+					$is_inside_link = true;
+				}
+				if ( 1 === preg_match( '/^<\/a\b/i', $part ) ) {
+					$is_inside_link = false;
+				}
+				continue;
+			}
+			if ( $is_inside_link ) {
+				continue;
+			}
+			foreach ( $terms_map as $item ) {
+				$needle = preg_quote( (string) $item['text'], '/' );
+				$parts[ $index ] = (string) preg_replace_callback(
+					'/\b(' . $needle . ')\b/ui',
+					static function ( array $matches ) use ( $item ): string {
+						return self::render_hover_token( (string) $item['type'], (string) $item['id'], (string) $matches[1] );
+					},
+					(string) $parts[ $index ],
+					1
+				);
+			}
+		}
+
+		return implode( '', $parts );
+	}
+
 	private static function render_hover_token( string $type, string $id, string $text ): string {
 		$card = self::get_hover_card_data( $type, $id );
 		if ( empty( $card ) ) {
@@ -802,7 +908,7 @@ Linktree|https://linktr.ee/acat"',
 	/** @return array<string,string> */
 	private static function get_hover_card_data( string $type, string $id ): array {
 		if ( 'asso' === $type ) {
-			$post = get_page_by_path( $id, OBJECT, 'ong' );
+			$post = get_page_by_path( $id, OBJECT, [ self::ASSO_POST_TYPE ] );
 			if ( ! $post instanceof WP_Post ) {
 				return [];
 			}
@@ -849,6 +955,10 @@ Linktree|https://linktr.ee/acat"',
 		}
 		extract( $vars, EXTR_SKIP );
 		require $file;
+	}
+
+	public static function get_asso_taxonomy(): string {
+		return self::ASSO_TAXONOMY;
 	}
 
 	/** @return string[] */
@@ -937,7 +1047,7 @@ Linktree|https://linktr.ee/acat"',
 		wp_safe_redirect(
 			add_query_arg(
 				[
-					'post_type' => 'ong',
+					'post_type' => self::ASSO_POST_TYPE,
 					'page'      => 'plaidact-asso-import',
 					'status'    => 'ok',
 					'count'     => $count,
@@ -1012,7 +1122,7 @@ Linktree|https://linktr.ee/acat"',
 		wp_safe_redirect(
 			add_query_arg(
 				[
-					'post_type' => 'ong',
+					'post_type' => self::ASSO_POST_TYPE,
 					'page'      => 'plaidact-asso-import',
 					'status'    => 'error',
 					'error'     => $message,
@@ -1028,11 +1138,11 @@ Linktree|https://linktr.ee/acat"',
 		$slug = sanitize_title( (string) ( $data['slug'] ?? '' ) );
 		$post = null;
 		if ( '' !== $slug ) {
-			$post = get_page_by_path( $slug, OBJECT, 'ong' );
+			$post = get_page_by_path( $slug, OBJECT, self::ASSO_POST_TYPE );
 		}
 
 		$postarr = [
-			'post_type'   => 'ong',
+			'post_type'   => self::ASSO_POST_TYPE,
 			'post_status' => 'publish',
 			'post_title'  => sanitize_text_field( (string) $data['title'] ),
 			'post_content'=> '',
@@ -1100,16 +1210,16 @@ Linktree|https://linktr.ee/acat"',
 		}
 		$term_ids = [];
 		foreach ( $names as $name ) {
-			$term = term_exists( $name, 'cause' );
+			$term = term_exists( $name, self::ASSO_TAXONOMY );
 			if ( ! $term ) {
-				$term = wp_insert_term( $name, 'cause' );
+				$term = wp_insert_term( $name, self::ASSO_TAXONOMY );
 			}
 			if ( is_array( $term ) && isset( $term['term_id'] ) ) {
 				$term_ids[] = (int) $term['term_id'];
 			}
 		}
 		if ( ! empty( $term_ids ) ) {
-			wp_set_object_terms( $post_id, $term_ids, 'cause', false );
+			wp_set_object_terms( $post_id, $term_ids, self::ASSO_TAXONOMY, false );
 		}
 	}
 
