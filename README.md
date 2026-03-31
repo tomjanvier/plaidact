@@ -9,10 +9,12 @@ Plugin WordPress unifié pour :
 - Shortcodes :
   - `[plaidact_breves posts_per_page="12" title="Fil d’actualité"]`
   - `[plaidact_breves_latest_dropdown]` (20 dernières en liste déroulante)
+  - `[plaidact_breves_timeline]` (alias horizontal de `[plaidact_breves]`)
   - `[plaidact_breves_all posts_per_page="5"]` (toutes les brèves, 3 colonnes, 5/page)
   - `[plaidact_timeline term="nom-de-la-timeline" title="Titre optionnel" fill_empty_months="0|1"]`
   - `[plaidact_asso_directory posts_per_page="9" cause="slug-cause"]`
   - `[plaidact_ong_directory]` (alias legacy)
+  - `[plaidact_hover_term type="asso|definition" id="slug" text="Texte survolé"]`
 - Blocs Gutenberg :
   - `plaidact/timeline`
   - `plaidact/asso-cause-list`
@@ -20,6 +22,9 @@ Plugin WordPress unifié pour :
 - Répertoire Asso : filtre par cause, archive/single/templates dédiés.
 - Fiche association : résumé, boutons site web/don, réseaux sociaux (top 10 + Bluesky).
 - Back-office : import CSV (création/mise à jour) avec support logo via URL ou ZIP de logos.
+- Back-office : export texte newsletter des brèves des 35 derniers jours.
+- Back-office : import CSV agenda/timelines avec détection de doublons dans le fichier.
+- Définitions/infobulles : CPT privé `Définitions` + taxonomie interne `Catégories de définitions`.
 - Taxonomies supprimées : `odd` et `forme_engagement`.
 
 ## Installation
@@ -41,3 +46,15 @@ Plugin WordPress unifié pour :
    - `causes` (séparées par `|`)
    - `social_*` (facebook, x, instagram, linkedin, youtube, tiktok, twitch, whatsapp, telegram, discord, bluesky)
 4. Importer le CSV, et (optionnel) un ZIP contenant les logos.
+
+## Import agenda/timeline (back-office)
+1. Aller dans **Agenda > Import CSV**.
+2. Colonnes principales :
+   - `title`, `slug`, `timeline`
+   - `date_debut`, `date_fin`, `type_evenement`, `lieu`, `lien_evenement`
+3. Les doublons dans le CSV (titre + date_debut + timeline) sont ignorés automatiquement.
+
+## Hover cards (associations + définitions)
+- Dans un contenu, utilisez le format `[[asso:slug|Texte]]` ou `[[definition:slug|Texte]]`.
+- Ou le shortcode `[plaidact_hover_term]`.
+- Les définitions sont gérées dans **Définitions** (non public).

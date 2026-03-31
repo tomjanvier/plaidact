@@ -31,16 +31,21 @@ final class Plugin {
 		add_action( 'init', [ __CLASS__, 'register_agenda_post_type' ], 0 );
 		add_action( 'init', [ __CLASS__, 'register_taxonomy' ], 1 );
 		add_action( 'init', [ __CLASS__, 'register_asso_cpt_and_taxonomies' ], 2 );
+		add_action( 'init', [ __CLASS__, 'register_hover_definitions' ], 3 );
 		add_action( 'init', [ __CLASS__, 'register_blocks' ], 20 );
 		add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_assets' ] );
 		add_shortcode( 'plaidact_timeline', [ __CLASS__, 'timeline_shortcode' ] );
 		add_shortcode( 'plaidact_asso_directory', [ __CLASS__, 'asso_directory_shortcode' ] );
 		add_shortcode( 'plaidact_ong_directory', [ __CLASS__, 'asso_directory_shortcode' ] ); // legacy
+		add_shortcode( 'plaidact_hover_term', [ __CLASS__, 'hover_term_shortcode' ] );
+		add_filter( 'the_content', [ __CLASS__, 'replace_hover_tokens_in_content' ], 12 );
 		add_filter( 'template_include', [ __CLASS__, 'maybe_use_plugin_templates' ] );
 		add_filter( 'theme_page_templates', [ __CLASS__, 'register_page_templates' ] );
 		add_filter( 'template_include', [ __CLASS__, 'handle_page_template' ], 99 );
 		add_action( 'admin_menu', [ __CLASS__, 'register_asso_import_page' ] );
+		add_action( 'admin_menu', [ __CLASS__, 'register_agenda_import_page' ] );
 		add_action( 'admin_post_plaidact_import_asso', [ __CLASS__, 'handle_asso_import' ] );
+		add_action( 'admin_post_plaidact_import_agenda', [ __CLASS__, 'handle_agenda_import' ] );
 	}
 
 	public static function register_agenda_post_type(): void {
@@ -120,6 +125,42 @@ final class Plugin {
 		);
 	}
 
+	public static function register_hover_definitions(): void {
+		register_taxonomy(
+			'pa_def_category',
+			[ 'pa_definition' ],
+			[
+				'labels'       => [
+					'name'          => __( 'Catégories de définitions', 'plaidact-breves-feed' ),
+					'singular_name' => __( 'Catégorie de définition', 'plaidact-breves-feed' ),
+				],
+				'public'       => false,
+				'show_ui'      => true,
+				'hierarchical' => true,
+				'show_in_rest' => true,
+			]
+		);
+
+		register_post_type(
+			'pa_definition',
+			[
+				'labels'             => [
+					'name'          => __( 'Définitions', 'plaidact-breves-feed' ),
+					'singular_name' => __( 'Définition', 'plaidact-breves-feed' ),
+				],
+				'public'             => false,
+				'publicly_queryable' => false,
+				'show_ui'            => true,
+				'show_in_menu'       => true,
+				'menu_position'      => 28,
+				'menu_icon'          => 'dashicons-editor-help',
+				'show_in_rest'       => true,
+				'supports'           => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
+				'taxonomies'         => [ 'pa_def_category' ],
+			]
+		);
+	}
+
 	public static function register_blocks(): void {
 		wp_register_script(
 			'plaidact-blocks',
@@ -179,6 +220,17 @@ final class Plugin {
 			'manage_options',
 			'plaidact-asso-import',
 			[ __CLASS__, 'render_asso_import_page' ]
+		);
+	}
+
+	public static function register_agenda_import_page(): void {
+		add_submenu_page(
+			'edit.php?post_type=agenda',
+			__( 'Import agenda', 'plaidact-breves-feed' ),
+			__( 'Import CSV', 'plaidact-breves-feed' ),
+			'manage_options',
+			'plaidact-agenda-import',
+			[ __CLASS__, 'render_agenda_import_page' ]
 		);
 	}
 
@@ -248,6 +300,32 @@ Linktree|https://linktr.ee/acat"',
 		<?php
 	}
 
+	public static function render_agenda_import_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		$status = isset( $_GET['status'] ) ? sanitize_key( (string) $_GET['status'] ) : '';
+		$count  = isset( $_GET['count'] ) ? absint( $_GET['count'] ) : 0;
+		$dupes  = isset( $_GET['dupes'] ) ? absint( $_GET['dupes'] ) : 0;
+		$template_headers = implode( ',', [ 'title', 'slug', 'timeline', 'date_debut', 'date_fin', 'type_evenement', 'lieu', 'lien_evenement' ] );
+		$template_row     = 'Réunion G7,reunion-g7,geopolitique,2026-06-02,2026-06-02,ponctuels,Ottawa,https://example.org/evenement';
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Import des événements Agenda', 'plaidact-breves-feed' ); ?></h1>
+			<?php if ( 'ok' === $status ) : ?>
+				<div class="notice notice-success"><p><?php echo esc_html( sprintf( __( '%d événements importés/mis à jour (%d doublons ignorés).', 'plaidact-breves-feed' ), $count, $dupes ) ); ?></p></div>
+			<?php endif; ?>
+			<p><a class="button" href="data:text/csv;charset=utf-8,<?php echo rawurlencode( $template_headers . "\n" . $template_row ); ?>" download="modele-import-agenda.csv"><?php esc_html_e( 'Télécharger un modèle CSV', 'plaidact-breves-feed' ); ?></a></p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data">
+				<?php wp_nonce_field( 'plaidact_import_agenda' ); ?>
+				<input type="hidden" name="action" value="plaidact_import_agenda" />
+				<input type="file" name="agenda_csv" accept=".csv,text/csv" required />
+				<?php submit_button( __( 'Importer', 'plaidact-breves-feed' ) ); ?>
+			</form>
+		</div>
+		<?php
+	}
+
 	public static function enqueue_assets(): void {
 		global $post;
 		$load_timeline = is_tax( 'agenda_timeline' );
@@ -264,6 +342,10 @@ Linktree|https://linktr.ee/acat"',
 		}
 
 		if ( $load_asso ) {
+			wp_enqueue_style( 'plaidact-asso-directory', PLAIDACT_BREVES_FEED_URL . 'assets/css/asso-directory.css', [], PLAIDACT_BREVES_FEED_VERSION );
+		}
+
+		if ( $post instanceof WP_Post && false !== strpos( $post->post_content, '[[' ) ) {
 			wp_enqueue_style( 'plaidact-asso-directory', PLAIDACT_BREVES_FEED_URL . 'assets/css/asso-directory.css', [], PLAIDACT_BREVES_FEED_VERSION );
 		}
 	}
@@ -631,6 +713,99 @@ Linktree|https://linktr.ee/acat"',
 		return $date->format( 'j' ) . ' ' . self::month_abbr( (int) $date->format( 'n' ) ) . ' ' . $date->format( 'Y' );
 	}
 
+	public static function hover_term_shortcode( array $atts = [] ): string {
+		$atts = shortcode_atts(
+			[
+				'type' => 'definition',
+				'id'   => '',
+				'text' => '',
+			],
+			$atts,
+			'plaidact_hover_term'
+		);
+
+		$type = sanitize_key( (string) $atts['type'] );
+		$id   = sanitize_title( (string) $atts['id'] );
+		$text = sanitize_text_field( (string) $atts['text'] );
+		if ( '' === $id ) {
+			return $text;
+		}
+		return self::render_hover_token( $type, $id, $text );
+	}
+
+	public static function replace_hover_tokens_in_content( string $content ): string {
+		if ( false === strpos( $content, '[[' ) ) {
+			return $content;
+		}
+
+		return (string) preg_replace_callback(
+			'/\[\[(definition|asso):([a-zA-Z0-9\-_]+)\|([^\]]+)\]\]/',
+			static function ( array $matches ): string {
+				return self::render_hover_token(
+					sanitize_key( (string) $matches[1] ),
+					sanitize_title( (string) $matches[2] ),
+					sanitize_text_field( (string) $matches[3] )
+				);
+			},
+			$content
+		);
+	}
+
+	private static function render_hover_token( string $type, string $id, string $text ): string {
+		$card = self::get_hover_card_data( $type, $id );
+		if ( empty( $card ) ) {
+			return esc_html( $text );
+		}
+
+		return sprintf(
+			'<span class="plaidact-hover-term" tabindex="0">%1$s<span class="plaidact-hover-card"><span class="plaidact-hover-card__inner">%2$s</span></span></span>',
+			esc_html( $text ),
+			self::render_hover_card_inner( $card )
+		);
+	}
+
+	/** @return array<string,string> */
+	private static function get_hover_card_data( string $type, string $id ): array {
+		if ( 'asso' === $type ) {
+			$post = get_page_by_path( $id, OBJECT, 'ong' );
+			if ( ! $post instanceof WP_Post ) {
+				return [];
+			}
+			return [
+				'title'       => get_the_title( $post ),
+				'description' => wp_trim_words( (string) get_field( 'resume_court', $post->ID ), 20, '…' ),
+				'logo'        => get_the_post_thumbnail_url( $post->ID, 'thumbnail' ) ?: '',
+				'url'         => get_permalink( $post ),
+				'cta'         => __( 'En savoir plus', 'plaidact-breves-feed' ),
+			];
+		}
+		$post = get_page_by_path( $id, OBJECT, 'pa_definition' );
+		if ( ! $post instanceof WP_Post ) {
+			return [];
+		}
+		return [
+			'title'       => get_the_title( $post ),
+			'description' => wp_trim_words( wp_strip_all_tags( (string) $post->post_content ), 20, '…' ),
+			'logo'        => get_the_post_thumbnail_url( $post->ID, 'thumbnail' ) ?: '',
+			'url'         => '',
+			'cta'         => __( 'Définition', 'plaidact-breves-feed' ),
+		];
+	}
+
+	/** @param array<string,string> $card */
+	private static function render_hover_card_inner( array $card ): string {
+		$html = '';
+		if ( ! empty( $card['logo'] ) ) {
+			$html .= '<img class="plaidact-hover-card__logo" src="' . esc_url( (string) $card['logo'] ) . '" alt="" loading="lazy" decoding="async" />';
+		}
+		$html .= '<strong class="plaidact-hover-card__title">' . esc_html( (string) $card['title'] ) . '</strong>';
+		$html .= '<p class="plaidact-hover-card__desc">' . esc_html( (string) $card['description'] ) . '</p>';
+		if ( ! empty( $card['url'] ) ) {
+			$html .= '<a class="plaidact-hover-card__btn" href="' . esc_url( (string) $card['url'] ) . '">' . esc_html( (string) $card['cta'] ) . '</a>';
+		}
+		return $html;
+	}
+
 	/** @param array<string,mixed> $vars */
 	public static function render_template( string $template, array $vars = [] ): void {
 		$file = PLAIDACT_BREVES_FEED_PATH . 'templates/' . ltrim( $template, '/' );
@@ -693,6 +868,8 @@ Linktree|https://linktr.ee/acat"',
 		$headers = array_map( static fn( $h ) => sanitize_key( (string) $h ), $headers );
 
 		$count = 0;
+		$duplicate_count = 0;
+		$dedupe_map = [];
 		while ( ( $row = fgetcsv( $handle, 0, $delimiter ) ) !== false ) {
 			$data = [];
 			foreach ( $headers as $index => $header ) {
@@ -702,6 +879,12 @@ Linktree|https://linktr.ee/acat"',
 			if ( '' === $title ) {
 				continue;
 			}
+			$signature = self::normalize_dedupe_key( implode( '|', [ (string) $title, (string) ( $data['slug'] ?? '' ) ] ) );
+			if ( isset( $dedupe_map[ $signature ] ) ) {
+				$duplicate_count++;
+				continue;
+			}
+			$dedupe_map[ $signature ] = true;
 
 			$post_id = self::upsert_asso_post( $data );
 			if ( $post_id <= 0 ) {
@@ -721,11 +904,71 @@ Linktree|https://linktr.ee/acat"',
 					'page'      => 'plaidact-asso-import',
 					'status'    => 'ok',
 					'count'     => $count,
+					'dupes'     => $duplicate_count,
 				],
 				admin_url( 'edit.php' )
 			)
 		);
 		exit;
+	}
+
+	public static function handle_agenda_import(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Accès refusé.', 'plaidact-breves-feed' ) );
+		}
+		check_admin_referer( 'plaidact_import_agenda' );
+		if ( empty( $_FILES['agenda_csv']['tmp_name'] ) ) {
+			self::redirect_agenda_import( 0, 0 );
+		}
+
+		$handle = fopen( (string) $_FILES['agenda_csv']['tmp_name'], 'rb' );
+		if ( false === $handle ) {
+			self::redirect_agenda_import( 0, 0 );
+		}
+		$first_line = (string) fgets( $handle );
+		rewind( $handle );
+		$delimiter = substr_count( $first_line, ';' ) > substr_count( $first_line, ',' ) ? ';' : ',';
+		$headers = fgetcsv( $handle, 0, $delimiter );
+		if ( ! is_array( $headers ) ) {
+			fclose( $handle );
+			self::redirect_agenda_import( 0, 0 );
+		}
+		$headers = array_map( static fn( $h ) => sanitize_key( (string) $h ), $headers );
+
+		$count = 0;
+		$dupes = 0;
+		$seen  = [];
+		while ( ( $row = fgetcsv( $handle, 0, $delimiter ) ) !== false ) {
+			$data = [];
+			foreach ( $headers as $i => $header ) {
+				$data[ $header ] = isset( $row[ $i ] ) ? trim( (string) $row[ $i ] ) : '';
+			}
+
+			$title = (string) ( $data['title'] ?? '' );
+			if ( '' === $title ) {
+				continue;
+			}
+			$signature = self::normalize_dedupe_key( $title . '|' . (string) ( $data['date_debut'] ?? '' ) . '|' . (string) ( $data['timeline'] ?? '' ) );
+			if ( isset( $seen[ $signature ] ) ) {
+				$dupes++;
+				continue;
+			}
+			$seen[ $signature ] = true;
+
+			$post_id = self::upsert_agenda_post( $data );
+			if ( $post_id <= 0 ) {
+				continue;
+			}
+			update_post_meta( $post_id, 'date_debut', (string) ( $data['date_debut'] ?? '' ) );
+			update_post_meta( $post_id, 'date_fin', (string) ( $data['date_fin'] ?? '' ) );
+			update_post_meta( $post_id, 'type_evenement', (string) ( $data['type_evenement'] ?? '' ) );
+			update_post_meta( $post_id, 'lieu', (string) ( $data['lieu'] ?? '' ) );
+			update_field( 'lien_evenement', (string) ( $data['lien_evenement'] ?? '' ), $post_id );
+			self::sync_agenda_timeline_term( $post_id, (string) ( $data['timeline'] ?? '' ) );
+			$count++;
+		}
+		fclose( $handle );
+		self::redirect_agenda_import( $count, $dupes );
 	}
 
 	private static function redirect_import_error( string $message ): void {
@@ -881,5 +1124,61 @@ Linktree|https://linktr.ee/acat"',
 			}
 		}
 		return $map;
+	}
+
+	private static function redirect_agenda_import( int $count, int $dupes ): void {
+		wp_safe_redirect(
+			add_query_arg(
+				[
+					'post_type' => 'agenda',
+					'page'      => 'plaidact-agenda-import',
+					'status'    => 'ok',
+					'count'     => $count,
+					'dupes'     => $dupes,
+				],
+				admin_url( 'edit.php' )
+			)
+		);
+		exit;
+	}
+
+	/** @param array<string,string> $data */
+	private static function upsert_agenda_post( array $data ): int {
+		$slug = sanitize_title( (string) ( $data['slug'] ?? '' ) );
+		$post = '' !== $slug ? get_page_by_path( $slug, OBJECT, 'agenda' ) : null;
+		$postarr = [
+			'post_type'    => 'agenda',
+			'post_status'  => 'publish',
+			'post_title'   => sanitize_text_field( (string) ( $data['title'] ?? '' ) ),
+			'post_content' => '',
+		];
+		if ( $post instanceof WP_Post ) {
+			$postarr['ID'] = $post->ID;
+			return (int) wp_update_post( $postarr );
+		}
+		if ( '' !== $slug ) {
+			$postarr['post_name'] = $slug;
+		}
+		return (int) wp_insert_post( $postarr );
+	}
+
+	private static function sync_agenda_timeline_term( int $post_id, string $timeline_name ): void {
+		$timeline_name = trim( $timeline_name );
+		if ( '' === $timeline_name ) {
+			return;
+		}
+		$term = term_exists( $timeline_name, 'agenda_timeline' );
+		if ( ! $term ) {
+			$term = wp_insert_term( $timeline_name, 'agenda_timeline' );
+		}
+		if ( is_array( $term ) && isset( $term['term_id'] ) ) {
+			wp_set_object_terms( $post_id, [ (int) $term['term_id'] ], 'agenda_timeline', false );
+		}
+	}
+
+	private static function normalize_dedupe_key( string $value ): string {
+		$normalized = remove_accents( mb_strtolower( trim( $value ) ) );
+		$normalized = preg_replace( '/\s+/', ' ', $normalized );
+		return is_string( $normalized ) ? $normalized : '';
 	}
 }

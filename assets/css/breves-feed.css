@@ -197,6 +197,9 @@
   color: var(--plaidact-muted);
 }
 
+.plaidact-breves-dropdown-wrap { max-width: 780px; margin: 1rem auto; padding: 0 1rem; }
+.plaidact-breves-dropdown { width: 100%; min-height: 2.8rem; border: 1px solid var(--plaidact-border); border-radius: .75rem; padding: .5rem .75rem; font-size: .95rem; background: #fff; color: var(--plaidact-text); }
+
 .plaidact-single-breve {
   max-width: 760px;
   margin: 2.5rem auto;
