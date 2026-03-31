@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PlaidAct Actualités (Brèves + Timeline + Répertoire Asso)
  * Plugin URI:  https://plaidact.example
- * Description: Plugin unifié PlaidAct pour les brèves, la timeline agenda et le répertoire des associations.
+ * Description: Extension PlaidAct (brèves + timeline agenda + répertoire associations) avec infobulles hover et blocs Gutenberg avancés.
  * Version:     3.0.0
  * Author:      PlaidAct
  * Text Domain: plaidact-breves-feed

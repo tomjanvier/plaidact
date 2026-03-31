@@ -189,6 +189,9 @@ final class Plugin {
 				'render_callback' => [ __CLASS__, 'render_timeline_block' ],
 				'attributes'      => [
 					'term' => [ 'type' => 'string', 'default' => '' ],
+					'title' => [ 'type' => 'string', 'default' => '' ],
+					'layout' => [ 'type' => 'string', 'default' => 'vertical' ],
+					'columns' => [ 'type' => 'number', 'default' => 3 ],
 					'fillEmptyMonths' => [ 'type' => 'boolean', 'default' => false ],
 					'eventsPerColumn' => [ 'type' => 'number', 'default' => 0 ],
 				],
@@ -211,10 +214,14 @@ final class Plugin {
 
 	public static function render_timeline_block( array $attributes ): string {
 		$term = isset( $attributes['term'] ) ? sanitize_title( (string) $attributes['term'] ) : '';
+		$layout = isset( $attributes['layout'] ) && in_array( (string) $attributes['layout'], [ 'vertical', 'horizontal' ], true ) ? (string) $attributes['layout'] : 'vertical';
 		$fill = isset( $attributes['fillEmptyMonths'] ) && $attributes['fillEmptyMonths'] ? '1' : '0';
 		return self::timeline_shortcode(
 			[
 				'term'              => $term,
+				'title'             => isset( $attributes['title'] ) ? sanitize_text_field( (string) $attributes['title'] ) : '',
+				'layout'            => $layout,
+				'columns'           => isset( $attributes['columns'] ) ? (string) max( 1, absint( (int) $attributes['columns'] ) ) : '3',
 				'fill_empty_months' => $fill,
 				'events_per_column' => isset( $attributes['eventsPerColumn'] ) ? (string) absint( (int) $attributes['eventsPerColumn'] ) : '0',
 			]
@@ -366,6 +373,7 @@ Linktree|https://linktr.ee/acat"',
 
 		if ( $load_asso || $load_hover ) {
 			wp_enqueue_style( 'plaidact-asso-directory', PLAIDACT_BREVES_FEED_URL . 'assets/css/asso-directory.css', [], PLAIDACT_BREVES_FEED_VERSION );
+			wp_enqueue_script( 'plaidact-hover-cards', PLAIDACT_BREVES_FEED_URL . 'assets/js/plaidact-hover.js', [], PLAIDACT_BREVES_FEED_VERSION, true );
 		}
 	}
 

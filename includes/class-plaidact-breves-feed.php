@@ -63,6 +63,14 @@ final class PlaidAct_Breves_Feed {
 			array(),
 			PLAIDACT_BREVES_FEED_VERSION
 		);
+
+		wp_register_script(
+			'plaidact-breves-ticker',
+			PLAIDACT_BREVES_FEED_URL . 'assets/js/plaidact-breves-ticker.js',
+			array(),
+			PLAIDACT_BREVES_FEED_VERSION,
+			true
+		);
 	}
 
 	public function render_shortcode( array $atts = array() ): string {
@@ -229,6 +237,9 @@ final class PlaidAct_Breves_Feed {
 		);
 
 		wp_enqueue_style( 'plaidact-breves-feed' );
+		if ( ! empty( $args['is_ticker'] ) ) {
+			wp_enqueue_script( 'plaidact-breves-ticker' );
+		}
 
 		ob_start();
 		$this->load_template(

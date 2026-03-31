@@ -1,6 +1,6 @@
 # PlaidAct Actualités (Plugin unifié)
 
-Plugin WordPress unifié pour :
+Extension WordPress unifiée pour :
 - les brèves,
 - la timeline agenda,
 - le répertoire des associations.
@@ -15,7 +15,7 @@ Plugin WordPress unifié pour :
   - `[plaidact_asso_directory posts_per_page="9" cause="slug-cause"]`
   - `[plaidact_hover_term type="asso|definition" id="slug" text="Texte survolé"]`
 - Blocs Gutenberg :
-  - `plaidact/timeline`
+  - `plaidact/timeline` (slug, titre, mode vertical/horizontal, nb de colonnes, remplissage des mois vides, événements par colonne)
   - `plaidact/asso-cause-list`
 - Timeline : passé + présent + futur, gestion des événements mensuels sur plusieurs mois.
 - Répertoire Asso : filtre par cause, archive/single/templates dédiés.
@@ -57,3 +57,4 @@ Plugin WordPress unifié pour :
 - Dans un contenu, utilisez le format `[[asso:slug|Texte]]` ou `[[definition:slug|Texte]]`.
 - Ou le shortcode `[plaidact_hover_term]`.
 - Les définitions sont gérées dans **Définitions** (non public).
+- Les infobulles sont affichées en bulle flottante au survol (compatible thèmes avec `overflow:hidden`).
