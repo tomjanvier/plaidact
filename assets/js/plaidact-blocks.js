@@ -10,6 +10,7 @@
 	const TextControl = wp.components.TextControl;
 	const RangeControl = wp.components.RangeControl;
 	const ToggleControl = wp.components.ToggleControl;
+	const SelectControl = wp.components.SelectControl;
 	const ServerSideRender = wp.serverSideRender;
 
 	wp.blocks.registerBlockType('plaidact/timeline', {
@@ -18,6 +19,9 @@
 		category: 'widgets',
 		attributes: {
 			term: { type: 'string', default: '' },
+			title: { type: 'string', default: '' },
+			layout: { type: 'string', default: 'vertical' },
+			columns: { type: 'number', default: 3 },
 			fillEmptyMonths: { type: 'boolean', default: false },
 			eventsPerColumn: { type: 'number', default: 0 }
 		},
@@ -29,6 +33,27 @@
 							label: __('Slug du terme timeline', 'plaidact-breves-feed'),
 							value: props.attributes.term,
 							onChange: function (term) { props.setAttributes({ term: term }); }
+						}),
+						el(TextControl, {
+							label: __('Titre (optionnel)', 'plaidact-breves-feed'),
+							value: props.attributes.title || '',
+							onChange: function (title) { props.setAttributes({ title: title }); }
+						}),
+						el(SelectControl, {
+							label: __('Disposition', 'plaidact-breves-feed'),
+							value: props.attributes.layout || 'vertical',
+							options: [
+								{ label: __('Verticale', 'plaidact-breves-feed'), value: 'vertical' },
+								{ label: __('Horizontale', 'plaidact-breves-feed'), value: 'horizontal' }
+							],
+							onChange: function (layout) { props.setAttributes({ layout: layout }); }
+						}),
+						el(RangeControl, {
+							label: __('Nombre de colonnes (horizontal)', 'plaidact-breves-feed'),
+							value: props.attributes.columns || 3,
+							onChange: function (n) { props.setAttributes({ columns: n || 3 }); },
+							min: 1,
+							max: 6
 						}),
 						el(ToggleControl, {
 							label: __('Afficher aussi les mois vides', 'plaidact-breves-feed'),
