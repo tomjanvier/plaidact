@@ -27,6 +27,8 @@ final class Plugin {
 		'bluesky'   => 'Bluesky',
 	];
 
+	private const SOCIAL_ICON_FALLBACK = 'share';
+
 	public static function init(): void {
 		add_action( 'init', [ __CLASS__, 'register_agenda_post_type' ], 0 );
 		add_action( 'init', [ __CLASS__, 'register_taxonomy' ], 1 );
@@ -53,16 +55,22 @@ final class Plugin {
 			'agenda',
 			[
 				'labels' => [
-					'name'          => __( 'Agenda', 'plaidact-breves-feed' ),
+					'name'          => __( 'Événements', 'plaidact-breves-feed' ),
 					'singular_name' => __( 'Événement', 'plaidact-breves-feed' ),
 					'menu_name'     => __( 'Agenda', 'plaidact-breves-feed' ),
+					'all_items'     => __( 'Tous les événements', 'plaidact-breves-feed' ),
+					'add_new_item'  => __( 'Ajouter un événement', 'plaidact-breves-feed' ),
+					'edit_item'     => __( 'Modifier l’événement', 'plaidact-breves-feed' ),
+					'new_item'      => __( 'Nouvel événement', 'plaidact-breves-feed' ),
+					'view_item'     => __( 'Voir l’événement', 'plaidact-breves-feed' ),
+					'search_items'  => __( 'Rechercher des événements', 'plaidact-breves-feed' ),
 				],
 				'public'       => true,
 				'show_in_rest' => true,
 				'has_archive'  => 'agenda',
 				'rewrite'      => [ 'slug' => 'agenda', 'with_front' => false ],
 				'menu_icon'    => 'dashicons-calendar-alt',
-				'supports'     => [ 'title', 'editor', 'excerpt', 'thumbnail', 'author' ],
+				'supports'     => [ 'title', 'editor', 'excerpt', 'thumbnail' ],
 			]
 		);
 	}
@@ -208,6 +216,7 @@ final class Plugin {
 			[
 				'cause'          => isset( $attributes['cause'] ) ? sanitize_title( (string) $attributes['cause'] ) : '',
 				'posts_per_page' => isset( $attributes['postsToShow'] ) ? (string) absint( $attributes['postsToShow'] ) : '9',
+				'pagination_key' => 'asso_page',
 			]
 		);
 	}
@@ -385,6 +394,7 @@ Linktree|https://linktr.ee/acat"',
 			[
 				'posts_per_page' => 9,
 				'cause'          => '',
+				'pagination_key' => 'asso_page',
 			],
 			$atts,
 			'plaidact_asso_directory'
@@ -397,6 +407,7 @@ Linktree|https://linktr.ee/acat"',
 				'posts_per_page' => max( 1, absint( $atts['posts_per_page'] ) ),
 				'is_shortcode'   => true,
 				'fixed_cause'    => sanitize_title( (string) $atts['cause'] ),
+				'pagination_key' => sanitize_key( (string) $atts['pagination_key'] ),
 			]
 		);
 		return (string) ob_get_clean();
@@ -408,6 +419,8 @@ Linktree|https://linktr.ee/acat"',
 				'term'  => '',
 				'title' => '',
 				'fill_empty_months' => '0',
+				'layout' => 'vertical',
+				'columns' => '3',
 			],
 			$atts,
 			'plaidact_timeline'
@@ -429,6 +442,8 @@ Linktree|https://linktr.ee/acat"',
 			[
 				'data'           => $payload,
 				'title_override' => sanitize_text_field( (string) $atts['title'] ),
+				'layout'         => in_array( (string) $atts['layout'], [ 'vertical', 'horizontal' ], true ) ? (string) $atts['layout'] : 'vertical',
+				'columns'        => max( 1, absint( (string) $atts['columns'] ) ),
 			]
 		);
 		return (string) ob_get_clean();
@@ -436,10 +451,15 @@ Linktree|https://linktr.ee/acat"',
 
 	/** @return array<string,mixed> */
 	public static function get_asso_filters_from_request(): array {
+		$paged_from_query = get_query_var( 'paged' ) ? absint( (string) get_query_var( 'paged' ) ) : 0;
+		$paged_from_page  = get_query_var( 'page' ) ? absint( (string) get_query_var( 'page' ) ) : 0;
+		$paged_from_get   = isset( $_GET['paged'] ) ? absint( wp_unslash( (string) $_GET['paged'] ) ) : 0;
+		$asso_page        = isset( $_GET['asso_page'] ) ? absint( wp_unslash( (string) $_GET['asso_page'] ) ) : 0;
+
 		return [
 			's'     => isset( $_GET['asso_s'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['asso_s'] ) ) : '',
 			'cause' => isset( $_GET['asso_cause'] ) ? sanitize_title( wp_unslash( (string) $_GET['asso_cause'] ) ) : '',
-			'paged' => max( 1, get_query_var( 'paged' ) ? absint( get_query_var( 'paged' ) ) : ( isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1 ) ),
+			'paged' => max( 1, $asso_page, $paged_from_get, $paged_from_query, $paged_from_page ),
 		];
 	}
 
@@ -497,20 +517,35 @@ Linktree|https://linktr.ee/acat"',
 			$links[ $slug ] = [
 				'label' => $label,
 				'url'   => $url,
-				'icon'  => 'https://cdn.simpleicons.org/' . rawurlencode( $slug ) . '/2A1738',
+				'icon'  => self::get_simple_icon_url( $slug, self::SOCIAL_ICON_FALLBACK ),
 			];
 		}
 		$custom_socials = self::parse_social_links_csv( (string) get_field( 'social_links_csv', $post_id ) );
-		foreach ( $custom_socials as $custom ) {
-			$slug = sanitize_title( (string) $custom['label'] );
-			$key  = '' !== $slug ? $slug : md5( (string) $custom['url'] );
+		foreach ( $custom_socials as $index => $custom ) {
+			$key = 'custom_' . $index;
 			$links[ $key ] = [
 				'label' => (string) $custom['label'],
 				'url'   => (string) $custom['url'],
-				'icon'  => 'https://cdn.simpleicons.org/' . rawurlencode( $key ) . '/2A1738',
+				'icon'  => self::get_simple_icon_url( sanitize_title( (string) $custom['label'] ), self::SOCIAL_ICON_FALLBACK ),
 			];
 		}
 		return $links;
+	}
+
+	private static function get_simple_icon_url( string $slug, string $fallback = '' ): string {
+		$slug = sanitize_title( $slug );
+		$map  = [
+			'linkedin' => 'linkedin',
+			'x'        => 'x',
+		];
+		$candidate = $map[ $slug ] ?? $slug;
+		if ( '' === $candidate ) {
+			$candidate = $fallback;
+		}
+		if ( '' === $candidate ) {
+			return '';
+		}
+		return 'https://cdn.simpleicons.org/' . rawurlencode( $candidate ) . '/2A1738';
 	}
 
 	/** @return array<int,array{post_id:int,title:string,permalink:string}> */
@@ -851,7 +886,8 @@ Linktree|https://linktr.ee/acat"',
 			self::redirect_import_error( __( 'CSV manquant.', 'plaidact-breves-feed' ) );
 		}
 
-		$logos_map = self::extract_logos_zip( $_FILES['asso_logos_zip'] ?? null );
+		$logo_import = self::extract_logos_zip( $_FILES['asso_logos_zip'] ?? null );
+		$logos_map   = $logo_import['map'];
 		$handle = fopen( (string) $_FILES['asso_csv']['tmp_name'], 'rb' );
 		if ( false === $handle ) {
 			self::redirect_import_error( __( 'Impossible de lire le CSV.', 'plaidact-breves-feed' ) );
@@ -873,7 +909,7 @@ Linktree|https://linktr.ee/acat"',
 		while ( ( $row = fgetcsv( $handle, 0, $delimiter ) ) !== false ) {
 			$data = [];
 			foreach ( $headers as $index => $header ) {
-				$data[ $header ] = isset( $row[ $index ] ) ? trim( (string) $row[ $index ] ) : '';
+				$data[ $header ] = isset( $row[ $index ] ) ? self::sanitize_import_value( $header, (string) $row[ $index ] ) : '';
 			}
 			$title = $data['title'] ?? '';
 			if ( '' === $title ) {
@@ -896,6 +932,7 @@ Linktree|https://linktr.ee/acat"',
 			$count++;
 		}
 		fclose( $handle );
+		self::cleanup_import_directory( $logo_import['dir'] );
 
 		wp_safe_redirect(
 			add_query_arg(
@@ -941,7 +978,7 @@ Linktree|https://linktr.ee/acat"',
 		while ( ( $row = fgetcsv( $handle, 0, $delimiter ) ) !== false ) {
 			$data = [];
 			foreach ( $headers as $i => $header ) {
-				$data[ $header ] = isset( $row[ $i ] ) ? trim( (string) $row[ $i ] ) : '';
+				$data[ $header ] = isset( $row[ $i ] ) ? self::sanitize_import_value( $header, (string) $row[ $i ] ) : '';
 			}
 
 			$title = (string) ( $data['title'] ?? '' );
@@ -1078,7 +1115,7 @@ Linktree|https://linktr.ee/acat"',
 
 	/** @param array<string,string> $data @param array<string,string> $logos_map */
 	private static function sync_asso_logo( int $post_id, array $data, array $logos_map ): void {
-		$logo_url = trim( (string) ( $data['logo_url'] ?? '' ) );
+		$logo_url = esc_url_raw( trim( (string) ( $data['logo_url'] ?? '' ) ) );
 		$logo_file = trim( (string) ( $data['logo_file'] ?? '' ) );
 		$source = $logo_url;
 		if ( '' === $source && '' !== $logo_file && isset( $logos_map[ $logo_file ] ) ) {
@@ -1092,23 +1129,56 @@ Linktree|https://linktr.ee/acat"',
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			require_once ABSPATH . 'wp-admin/includes/image.php';
 		}
-		$attachment_id = media_sideload_image( esc_url_raw( $source ), $post_id, null, 'id' );
-		if ( ! is_wp_error( $attachment_id ) ) {
-			set_post_thumbnail( $post_id, (int) $attachment_id );
+		if ( self::is_local_file_path( $source ) ) {
+			$attachment_id = self::insert_attachment_from_local_file( $source, $post_id );
+		} else {
+			$attachment_id = media_sideload_image( esc_url_raw( $source ), $post_id, null, 'id' );
+		}
+		if ( ! is_wp_error( $attachment_id ) && is_int( $attachment_id ) ) {
+			set_post_thumbnail( $post_id, $attachment_id );
 		}
 	}
 
-	/** @param array<string,mixed>|null $zip_file @return array<string,string> */
+	private static function is_local_file_path( string $path ): bool {
+		return '' !== $path && ( str_starts_with( $path, '/' ) || preg_match( '/^[A-Za-z]:[\/\\\\]/', $path ) );
+	}
+
+	private static function insert_attachment_from_local_file( string $file_path, int $post_id ): int|\WP_Error {
+		if ( ! file_exists( $file_path ) || ! is_readable( $file_path ) ) {
+			return new \WP_Error( 'missing_logo_file', __( 'Fichier logo introuvable.', 'plaidact-breves-feed' ) );
+		}
+
+		$wp_filetype = wp_check_filetype( basename( $file_path ), null );
+		$attachment  = [
+			'guid'           => wp_upload_dir()['url'] . '/' . basename( $file_path ),
+			'post_mime_type' => $wp_filetype['type'] ?? '',
+			'post_title'     => sanitize_file_name( pathinfo( $file_path, PATHINFO_FILENAME ) ),
+			'post_status'    => 'inherit',
+		];
+
+		$attachment_id = wp_insert_attachment( $attachment, $file_path, $post_id );
+		if ( ! is_int( $attachment_id ) || $attachment_id <= 0 ) {
+			return new \WP_Error( 'attachment_failed', __( 'Impossible d’ajouter le logo.', 'plaidact-breves-feed' ) );
+		}
+
+		$attachment_data = wp_generate_attachment_metadata( $attachment_id, $file_path );
+		if ( is_array( $attachment_data ) ) {
+			wp_update_attachment_metadata( $attachment_id, $attachment_data );
+		}
+		return $attachment_id;
+	}
+
+	/** @param array<string,mixed>|null $zip_file @return array{map:array<string,string>,dir:string} */
 	private static function extract_logos_zip( ?array $zip_file ): array {
 		if ( empty( $zip_file['tmp_name'] ) || ! class_exists( 'ZipArchive' ) ) {
-			return [];
+			return [ 'map' => [], 'dir' => '' ];
 		}
 		$zip = new \ZipArchive();
 		if ( true !== $zip->open( (string) $zip_file['tmp_name'] ) ) {
-			return [];
+			return [ 'map' => [], 'dir' => '' ];
 		}
 		$upload = wp_upload_dir();
-		$base_dir = trailingslashit( $upload['basedir'] ) . 'plaidact-import-logos-' . time();
+		$base_dir = trailingslashit( $upload['basedir'] ) . 'plaidact-import-logos-' . uniqid( '', true );
 		wp_mkdir_p( $base_dir );
 		$zip->extractTo( $base_dir );
 		$zip->close();
@@ -1116,14 +1186,84 @@ Linktree|https://linktr.ee/acat"',
 		$map = [];
 		$files = glob( $base_dir . '/*' );
 		if ( ! is_array( $files ) ) {
-			return [];
+			return [ 'map' => [], 'dir' => $base_dir ];
 		}
 		foreach ( $files as $file ) {
 			if ( is_file( $file ) ) {
-				$map[ basename( $file ) ] = trailingslashit( $upload['baseurl'] ) . basename( $base_dir ) . '/' . rawurlencode( basename( $file ) );
+				$map[ basename( $file ) ] = $file;
 			}
 		}
-		return $map;
+		return [ 'map' => $map, 'dir' => $base_dir ];
+	}
+
+	private static function cleanup_import_directory( string $directory ): void {
+		if ( '' === $directory || ! is_dir( $directory ) ) {
+			return;
+		}
+		$items = glob( trailingslashit( $directory ) . '*' );
+		if ( is_array( $items ) ) {
+			foreach ( $items as $item ) {
+				if ( is_file( $item ) ) {
+					wp_delete_file( $item );
+				}
+			}
+		}
+		@rmdir( $directory );
+	}
+
+	private static function sanitize_import_value( string $header, string $value ): string {
+		$value = trim( $value );
+		if ( '' === $value ) {
+			return '';
+		}
+		$url_fields = [
+			'logo_url',
+			'url_web',
+			'url_don',
+			'social_facebook',
+			'social_x',
+			'social_instagram',
+			'social_linkedin',
+			'social_youtube',
+			'social_tiktok',
+			'social_twitch',
+			'social_whatsapp',
+			'social_telegram',
+			'social_discord',
+			'social_bluesky',
+			'lien_evenement',
+		];
+		if ( in_array( $header, $url_fields, true ) ) {
+			return esc_url_raw( $value );
+		}
+		if ( in_array( $header, [ 'resume_court' ], true ) ) {
+			return sanitize_textarea_field( $value );
+		}
+		if ( in_array( $header, [ 'social_links_csv' ], true ) ) {
+			$lines = preg_split( '/\r\n|\r|\n/', $value );
+			if ( ! is_array( $lines ) ) {
+				return '';
+			}
+			$clean = [];
+			foreach ( $lines as $line ) {
+				$line = trim( $line );
+				if ( '' === $line ) {
+					continue;
+				}
+				$parts = explode( '|', $line, 2 );
+				if ( 2 !== count( $parts ) ) {
+					continue;
+				}
+				$label = sanitize_text_field( trim( $parts[0] ) );
+				$url   = esc_url_raw( trim( $parts[1] ) );
+				if ( '' === $label || '' === $url ) {
+					continue;
+				}
+				$clean[] = $label . '|' . $url;
+			}
+			return implode( "\n", $clean );
+		}
+		return sanitize_text_field( $value );
 	}
 
 	private static function redirect_agenda_import( int $count, int $dupes ): void {

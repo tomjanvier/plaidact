@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<?php if ( $query->have_posts() ) : ?>
 		<?php if ( ! empty( $args['is_ticker'] ) ) : ?>
-			<div class="plaidact-breves-ticker" aria-live="polite">
+			<div class="plaidact-breves-ticker">
 				<div class="plaidact-breves-ticker__track">
 					<?php
 					for ( $loop = 0; $loop < 2; $loop++ ) :
