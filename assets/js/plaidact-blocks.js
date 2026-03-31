@@ -20,6 +20,8 @@
 		attributes: {
 			term: { type: 'string', default: '' },
 			title: { type: 'string', default: '' },
+			showTitle: { type: 'boolean', default: true },
+			showDownload: { type: 'boolean', default: true },
 			layout: { type: 'string', default: 'vertical' },
 			columns: { type: 'number', default: 3 },
 			fillEmptyMonths: { type: 'boolean', default: false },
@@ -38,6 +40,16 @@
 							label: __('Titre (optionnel)', 'plaidact-breves-feed'),
 							value: props.attributes.title || '',
 							onChange: function (title) { props.setAttributes({ title: title }); }
+						}),
+						el(ToggleControl, {
+							label: __('Afficher le titre', 'plaidact-breves-feed'),
+							checked: props.attributes.showTitle !== false,
+							onChange: function (v) { props.setAttributes({ showTitle: !!v }); }
+						}),
+						el(ToggleControl, {
+							label: __('Afficher le bouton Télécharger', 'plaidact-breves-feed'),
+							checked: props.attributes.showDownload !== false,
+							onChange: function (v) { props.setAttributes({ showDownload: !!v }); }
 						}),
 						el(SelectControl, {
 							label: __('Disposition', 'plaidact-breves-feed'),

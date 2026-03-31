@@ -27,6 +27,7 @@ $asso_taxonomy = Plugin::get_asso_taxonomy();
 					<div class="plaidact-asso-card__actions">
 						<?php if ( get_field( 'url_web' ) ) : ?><a class="plaidact-btn" href="<?php echo esc_url( (string) get_field( 'url_web' ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Visiter le site web', 'plaidact-breves-feed' ); ?></a><?php endif; ?>
 						<?php if ( get_field( 'url_don' ) ) : ?><a class="plaidact-btn plaidact-btn--ghost" href="<?php echo esc_url( (string) get_field( 'url_don' ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Faire un don', 'plaidact-breves-feed' ); ?></a><?php endif; ?>
+						<?php if ( get_field( 'url_contact' ) ) : ?><a class="plaidact-btn plaidact-btn--ghost" href="<?php echo esc_url( (string) get_field( 'url_contact' ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Contacter', 'plaidact-breves-feed' ); ?></a><?php endif; ?>
 					</div>
 					<?php $social_links = Plugin::get_asso_social_links( get_the_ID() ); ?>
 					<?php if ( ! empty( $social_links ) ) : ?>

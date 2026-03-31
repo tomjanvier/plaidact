@@ -1,5 +1,9 @@
 .pa-timeline{--pa-purple:#2A1738;--pa-purple-soft:#f5effd;--pa-lilac-mid:#d8c8ea;--pa-text:#2f2240;--pa-text-muted:#6b5d7a;--pa-white:#fff;--pa-radius:12px;max-width:930px;margin-inline:auto;padding:2rem 1rem 3rem;color:var(--pa-text);background:#fff}
 .pa-timeline-title{font-size:clamp(1.45rem,3vw,2rem);font-weight:900;color:var(--pa-purple);margin:0 0 1.4rem}
+.pa-timeline-actions{display:flex;justify-content:flex-end;margin:-.8rem 0 1rem}
+.pa-timeline-download{border:1px solid #d7c4eb;background:#fff;color:var(--pa-purple);border-radius:999px;padding:.42rem .82rem;font-size:.78rem;font-weight:700;cursor:pointer}
+.pa-timeline-download:hover,.pa-timeline-download:focus{background:var(--pa-purple);color:#fff;border-color:var(--pa-purple)}
+.pa-timeline-print-brand{display:none}
 .pa-years-nav{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.92);backdrop-filter:blur(5px);padding:.6rem;border:1px solid #ece2f8;border-radius:999px;margin-bottom:1.4rem}
 .pa-years-nav ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.35rem}
 .pa-years-nav a{display:inline-block;padding:.28rem .75rem;border:1.5px solid var(--pa-purple);border-radius:2rem;color:var(--pa-purple);font-size:.82rem;font-weight:700;text-decoration:none}
@@ -28,5 +32,6 @@
 .pa-timeline--horizontal .pa-month-block{margin-bottom:0;border:1px solid #eadff8;border-radius:12px;padding:.7rem;background:#fff}
 .pa-timeline--horizontal .pa-event-list{display:grid;grid-template-columns:1fr;gap:.6rem}
 .pa-timeline--horizontal .pa-month-block--multi-col .pa-month-events-columns{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.75rem}
+.pa-timeline--horizontal .pa-event-title,.pa-month-block--multi-col .pa-event-title{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3;display:block}
 @media (max-width:600px){.pa-timeline{padding:1.1rem .82rem 2rem}.pa-months-wrapper{padding-left:0}.pa-months-wrapper:before,.pa-month-dot{display:none}.pa-month-heading{background:var(--pa-purple-soft);border-radius:8px;padding:.35rem .63rem}.pa-years-nav{position:static;border-radius:14px}.pa-event{grid-template-columns:2.5rem 1fr auto;grid-template-areas:"date body action" ". logo ."}.pa-event-title{white-space:normal;font-size:.85rem}.pa-timeline--horizontal .pa-months-wrapper{grid-template-columns:1fr}}
-@media print{.pa-event--noprint,.pa-years-nav,.pa-event-cta{display:none!important}.pa-event{border:1px solid #ccc!important;box-shadow:none!important}}
+@media print{.pa-event--noprint,.pa-years-nav,.pa-event-cta,.pa-timeline-actions{display:none!important}.pa-event{border:1px solid #ccc!important;box-shadow:none!important}.pa-timeline-print-brand{display:block!important;position:fixed;right:10mm;bottom:8mm;width:95px;opacity:.9}.pa-timeline-print-brand img{width:100%;height:auto;display:block}}
