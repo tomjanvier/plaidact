@@ -13,6 +13,7 @@ Plugin unifié pour gérer :
 - Liste déroulante des dernières brèves.
 - Grille paginée de toutes les brèves.
 - Export back-office des textes newsletter (35 derniers jours).
+- Import CSV des brèves (création/mise à jour) avec déduplication (titre + date).
 
 ### Agenda / Timeline
 - Timeline verticale ou horizontale.
@@ -87,6 +88,13 @@ Colonnes principales :
 - `date_debut`, `date_fin`, `type_evenement`, `lieu`, `lien_evenement`
 
 ---
+
+### Import Brèves
+Menu : **Brèves > Import CSV**
+
+Colonnes principales :
+- `title`, `slug`, `date`, `content`
+- `thematique_libre`, `url_externe`
 
 ## 6) Notes utiles
 

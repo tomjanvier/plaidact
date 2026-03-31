@@ -31,6 +31,8 @@ final class PlaidAct_Breves_Feed {
 		add_filter( 'template_include', array( $this, 'register_archive_template' ) );
 		add_filter( 'single_template', array( $this, 'register_single_template' ) );
 		add_action( 'admin_menu', array( $this, 'register_export_page' ) );
+		add_action( 'admin_menu', array( $this, 'register_import_page' ) );
+		add_action( 'admin_post_plaidact_import_breves', array( $this, 'handle_import' ) );
 	}
 
 	public function load_textdomain(): void {
@@ -237,9 +239,7 @@ final class PlaidAct_Breves_Feed {
 		);
 
 		wp_enqueue_style( 'plaidact-breves-feed' );
-		if ( ! empty( $args['is_ticker'] ) ) {
-			wp_enqueue_script( 'plaidact-breves-ticker' );
-		}
+		wp_enqueue_script( 'plaidact-breves-ticker' );
 
 		ob_start();
 		$this->load_template(
@@ -358,6 +358,17 @@ final class PlaidAct_Breves_Feed {
 		);
 	}
 
+	public function register_import_page(): void {
+		add_submenu_page(
+			'edit.php?post_type=breves',
+			__( 'Import brèves', 'plaidact-breves-feed' ),
+			__( 'Import CSV', 'plaidact-breves-feed' ),
+			'manage_options',
+			'plaidact-breves-import',
+			array( $this, 'render_import_page' )
+		);
+	}
+
 	public function render_export_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
@@ -404,6 +415,178 @@ final class PlaidAct_Breves_Feed {
 			<textarea readonly rows="18" style="width:100%;font-family:monospace;"><?php echo esc_textarea( $payload ); ?></textarea>
 		</div>
 		<?php
+	}
+
+	public function render_import_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$status = isset( $_GET['status'] ) ? sanitize_key( (string) $_GET['status'] ) : '';
+		$count  = isset( $_GET['count'] ) ? absint( $_GET['count'] ) : 0;
+		$dupes  = isset( $_GET['dupes'] ) ? absint( $_GET['dupes'] ) : 0;
+
+		$template_headers = implode( ',', array( 'title', 'slug', 'date', 'content', 'thematique_libre', 'url_externe' ) );
+		$template_row     = 'Lancement de campagne,lancement-campagne,2026-03-15,Texte de la brève,Droits humains,https://example.org/article';
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Import des brèves', 'plaidact-breves-feed' ); ?></h1>
+			<?php if ( 'ok' === $status ) : ?>
+				<div class="notice notice-success"><p><?php echo esc_html( sprintf( __( '%d brèves importées/mises à jour (%d doublons ignorés).', 'plaidact-breves-feed' ), $count, $dupes ) ); ?></p></div>
+			<?php endif; ?>
+			<p><a class="button" href="data:text/csv;charset=utf-8,<?php echo rawurlencode( $template_headers . "\n" . $template_row ); ?>" download="modele-import-breves.csv"><?php esc_html_e( 'Télécharger un modèle CSV', 'plaidact-breves-feed' ); ?></a></p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data">
+				<?php wp_nonce_field( 'plaidact_import_breves' ); ?>
+				<input type="hidden" name="action" value="plaidact_import_breves" />
+				<input type="file" name="breves_csv" accept=".csv,text/csv" required />
+				<?php submit_button( __( 'Importer', 'plaidact-breves-feed' ) ); ?>
+			</form>
+		</div>
+		<?php
+	}
+
+	public function handle_import(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Accès refusé.', 'plaidact-breves-feed' ) );
+		}
+
+		check_admin_referer( 'plaidact_import_breves' );
+		if ( empty( $_FILES['breves_csv']['tmp_name'] ) ) {
+			$this->redirect_import( 0, 0 );
+		}
+
+		$handle = fopen( (string) $_FILES['breves_csv']['tmp_name'], 'rb' );
+		if ( false === $handle ) {
+			$this->redirect_import( 0, 0 );
+		}
+
+		$first_line = (string) fgets( $handle );
+		rewind( $handle );
+		$delimiter = substr_count( $first_line, ';' ) > substr_count( $first_line, ',' ) ? ';' : ',';
+		$headers = fgetcsv( $handle, 0, $delimiter );
+		if ( ! is_array( $headers ) ) {
+			fclose( $handle );
+			$this->redirect_import( 0, 0 );
+		}
+		$headers = array_map( static fn( $header ) => sanitize_key( (string) $header ), $headers );
+
+		$count = 0;
+		$dupes = 0;
+		$seen  = array();
+
+		while ( ( $row = fgetcsv( $handle, 0, $delimiter ) ) !== false ) {
+			$data = array();
+			foreach ( $headers as $index => $header ) {
+				$data[ $header ] = isset( $row[ $index ] ) ? $this->sanitize_import_value( $header, (string) $row[ $index ] ) : '';
+			}
+
+			$title = (string) ( $data['title'] ?? '' );
+			if ( '' === $title ) {
+				continue;
+			}
+
+			$signature = $this->normalize_dedupe_key( $title . '|' . (string) ( $data['date'] ?? '' ) );
+			if ( isset( $seen[ $signature ] ) ) {
+				$dupes++;
+				continue;
+			}
+			$seen[ $signature ] = true;
+
+			$post_id = $this->upsert_breve_post( $data );
+			if ( $post_id <= 0 ) {
+				continue;
+			}
+
+			if ( isset( $data['thematique_libre'] ) ) {
+				update_field( 'thematique_libre', (string) $data['thematique_libre'], $post_id );
+			}
+			if ( isset( $data['url_externe'] ) ) {
+				update_field( 'url_externe', (string) $data['url_externe'], $post_id );
+			}
+			$count++;
+		}
+
+		fclose( $handle );
+		$this->redirect_import( $count, $dupes );
+	}
+
+	/** @param array<string,string> $data */
+	private function upsert_breve_post( array $data ): int {
+		$slug = sanitize_title( (string) ( $data['slug'] ?? '' ) );
+		$post = '' !== $slug ? get_page_by_path( $slug, OBJECT, 'breves' ) : null;
+
+		$postarr = array(
+			'post_type'    => 'breves',
+			'post_status'  => 'publish',
+			'post_title'   => sanitize_text_field( (string) ( $data['title'] ?? '' ) ),
+			'post_content' => isset( $data['content'] ) ? wp_kses_post( (string) $data['content'] ) : '',
+		);
+
+		if ( ! empty( $data['date'] ) ) {
+			$timestamp = strtotime( (string) $data['date'] );
+			if ( false !== $timestamp ) {
+				$postarr['post_date']     = gmdate( 'Y-m-d H:i:s', $timestamp );
+				$postarr['post_date_gmt'] = gmdate( 'Y-m-d H:i:s', $timestamp );
+			}
+		}
+
+		if ( $post instanceof WP_Post ) {
+			$postarr['ID'] = $post->ID;
+			return (int) wp_update_post( $postarr );
+		}
+
+		if ( '' !== $slug ) {
+			$postarr['post_name'] = $slug;
+		}
+
+		return (int) wp_insert_post( $postarr );
+	}
+
+	private function sanitize_import_value( string $header, string $value ): string {
+		$value = trim( $value );
+		if ( '' === $value ) {
+			return '';
+		}
+
+		if ( in_array( $header, array( 'url_externe' ), true ) ) {
+			return esc_url_raw( $value );
+		}
+
+		if ( in_array( $header, array( 'content' ), true ) ) {
+			return wp_kses_post( $value );
+		}
+
+		if ( in_array( $header, array( 'date' ), true ) ) {
+			$timestamp = strtotime( $value );
+			return false === $timestamp ? '' : gmdate( 'Y-m-d', $timestamp );
+		}
+
+		return sanitize_text_field( $value );
+	}
+
+	private function normalize_dedupe_key( string $value ): string {
+		$value = remove_accents( strtolower( trim( $value ) ) );
+		$value = preg_replace( '/\s+/', ' ', $value );
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+		return $value;
+	}
+
+	private function redirect_import( int $count, int $dupes ): void {
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'post_type' => 'breves',
+					'page'      => 'plaidact-breves-import',
+					'status'    => 'ok',
+					'count'     => $count,
+					'dupes'     => $dupes,
+				),
+				admin_url( 'edit.php' )
+			)
+		);
+		exit;
 	}
 
 	private function get_current_page( string $query_var = 'paged' ): int {

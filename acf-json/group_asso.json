@@ -100,7 +100,7 @@
         "label": "Réseaux sociaux (CSV)",
         "name": "social_links_csv",
         "type": "textarea",
-        "instructions": "Ajoutez un réseau par ligne avec le format reseau|url. Exemple : Mastodon|https:\/\/mastodon.social\/@compte",
+        "instructions": "Ajoutez un réseau par ligne avec le format reseau|url. Exemple : Mastodon|https://mastodon.social/@compte",
         "rows": 4,
         "new_lines": ""
       }
@@ -110,7 +110,7 @@
         {
           "param": "post_type",
           "operator": "==",
-          "value": "ong"
+          "value": "associations"
         }
       ]
     ],
