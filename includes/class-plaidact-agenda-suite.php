@@ -49,6 +49,7 @@ final class Plugin {
 		add_filter( 'template_include', [ __CLASS__, 'handle_page_template' ], 99 );
 		add_action( 'admin_menu', [ __CLASS__, 'register_asso_import_page' ] );
 		add_action( 'admin_menu', [ __CLASS__, 'register_agenda_import_page' ] );
+		add_action( 'template_redirect', [ __CLASS__, 'maybe_serve_timeline_ical' ] );
 		add_action( 'admin_post_plaidact_import_asso', [ __CLASS__, 'handle_asso_import' ] );
 		add_action( 'admin_post_plaidact_import_agenda', [ __CLASS__, 'handle_agenda_import' ] );
 	}
@@ -110,8 +111,9 @@ final class Plugin {
 					'menu_name'     => __( 'Répertoire Asso', 'plaidact-breves-feed' ),
 				],
 				'public'             => true,
-				'has_archive'        => 'associations',
-				'rewrite'            => [ 'slug' => 'associations', 'with_front' => false ],
+				'has_archive'        => 'association',
+				'rewrite'            => [ 'slug' => 'association', 'with_front' => false ],
+				'taxonomies'         => [ self::ASSO_TAXONOMY ],
 				'show_in_rest'       => true,
 				'menu_icon'          => 'dashicons-groups',
 				'supports'           => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
@@ -124,14 +126,25 @@ final class Plugin {
 			[ self::ASSO_POST_TYPE ],
 			[
 				'labels' => [
-					'name'          => __( 'Associations (taxonomie)', 'plaidact-breves-feed' ),
-					'singular_name' => __( 'Association (taxonomie)', 'plaidact-breves-feed' ),
+					'name'              => __( 'Catégories d’associations', 'plaidact-breves-feed' ),
+					'singular_name'     => __( 'Catégorie d’association', 'plaidact-breves-feed' ),
+					'menu_name'         => __( 'Catégories', 'plaidact-breves-feed' ),
+					'all_items'         => __( 'Toutes les catégories', 'plaidact-breves-feed' ),
+					'edit_item'         => __( 'Modifier la catégorie', 'plaidact-breves-feed' ),
+					'view_item'         => __( 'Voir la catégorie', 'plaidact-breves-feed' ),
+					'update_item'       => __( 'Mettre à jour la catégorie', 'plaidact-breves-feed' ),
+					'add_new_item'      => __( 'Ajouter une catégorie', 'plaidact-breves-feed' ),
+					'new_item_name'     => __( 'Nouvelle catégorie', 'plaidact-breves-feed' ),
+					'parent_item'       => __( 'Catégorie parente', 'plaidact-breves-feed' ),
+					'parent_item_colon' => __( 'Catégorie parente :', 'plaidact-breves-feed' ),
+					'search_items'      => __( 'Rechercher des catégories', 'plaidact-breves-feed' ),
 				],
 				'public'            => true,
 				'hierarchical'      => true,
+				'show_ui'           => true,
 				'show_in_rest'      => true,
 				'show_admin_column' => true,
-				'rewrite'           => [ 'slug' => 'associations-categorie', 'with_front' => false ],
+				'rewrite'           => [ 'slug' => 'association-categorie', 'with_front' => false ],
 			]
 		);
 	}
@@ -739,6 +752,88 @@ Linktree|https://linktr.ee/acat"',
 			'years' => $years,
 			'term'  => $term instanceof WP_Term ? $term : null,
 		];
+	}
+
+
+	public static function maybe_serve_timeline_ical(): void {
+		$timeline = isset( $_GET['plaidact_timeline_ical'] ) ? sanitize_title( wp_unslash( (string) $_GET['plaidact_timeline_ical'] ) ) : '';
+		if ( '' === $timeline ) {
+			return;
+		}
+
+		self::serve_timeline_ical( $timeline );
+	}
+
+	private static function serve_timeline_ical( string $timeline_slug ): void {
+		$payload = self::build_timeline_data( $timeline_slug, false );
+		$term    = $payload['term'] ?? null;
+		if ( ! $term instanceof WP_Term ) {
+			status_header( 404 );
+			exit;
+		}
+
+		$ical = self::build_timeline_ical_content( $payload );
+		header( 'Content-Type: text/calendar; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="agenda-' . sanitize_file_name( $timeline_slug ) . '.ics"' );
+		header( 'Cache-Control: no-cache, must-revalidate' );
+		echo $ical; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		exit;
+	}
+
+	/** @param array{years: array<int,array{year:int,months:array<int,array{month:int,month_name:string,events:array}>}>, term: WP_Term|null} $payload */
+	private static function build_timeline_ical_content( array $payload ): string {
+		$term = $payload['term'];
+		$events = [];
+		foreach ( $payload['years'] as $year_data ) {
+			foreach ( $year_data['months'] as $month_data ) {
+				foreach ( $month_data['events'] as $event ) {
+					$events[ (int) $event['id'] ] = $event;
+				}
+			}
+		}
+
+		$now = gmdate( 'Ymd\THis\Z' );
+		$lines = [
+			'BEGIN:VCALENDAR',
+			'VERSION:2.0',
+			'PRODID:-//PlaidAct//Agenda//FR',
+			'CALSCALE:GREGORIAN',
+			'METHOD:PUBLISH',
+			'X-WR-CALNAME:' . self::escape_ical_text( $term instanceof WP_Term ? $term->name : __( 'Agenda PlaidAct', 'plaidact-breves-feed' ) ),
+		];
+
+		foreach ( $events as $event ) {
+			$start = $event['date_debut'] instanceof DateTimeImmutable ? $event['date_debut'] : null;
+			if ( ! $start ) {
+				continue;
+			}
+			$end = $event['date_fin'] instanceof DateTimeImmutable ? $event['date_fin'] : null;
+			if ( ! $end || $end < $start ) {
+				$end = $start;
+			}
+			$end_exclusive = $end->modify( '+1 day' );
+			$lines[] = 'BEGIN:VEVENT';
+			$lines[] = 'UID:agenda-' . (int) $event['id'] . '-' . $start->format( 'Ymd' ) . '@plaidact.org';
+			$lines[] = 'DTSTAMP:' . $now;
+			$lines[] = 'DTSTART;VALUE=DATE:' . $start->format( 'Ymd' );
+			$lines[] = 'DTEND;VALUE=DATE:' . $end_exclusive->format( 'Ymd' );
+			$lines[] = 'SUMMARY:' . self::escape_ical_text( (string) ( $event['title'] ?? '' ) );
+			if ( ! empty( $event['lieu'] ) ) {
+				$lines[] = 'LOCATION:' . self::escape_ical_text( (string) $event['lieu'] );
+			}
+			if ( ! empty( $event['url'] ) ) {
+				$lines[] = 'URL:' . esc_url_raw( (string) $event['url'] );
+			}
+			$lines[] = 'END:VEVENT';
+		}
+
+		$lines[] = 'END:VCALENDAR';
+		return implode( "\r\n", $lines ) . "\r\n";
+	}
+
+	private static function escape_ical_text( string $value ): string {
+		$value = str_replace( [ '\\', ';', ',', "\r\n", "\n", "\r" ], [ '\\\\', '\;', '\,', '\n', '\n', '\n' ], $value );
+		return trim( $value );
 	}
 
 	public static function parse_acf_date( string $raw ): ?DateTimeImmutable {

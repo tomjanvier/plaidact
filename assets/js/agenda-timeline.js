@@ -46,12 +46,6 @@
 				}
 			}
 
-			var downloadButton = timeline.querySelector('.pa-timeline-download');
-			if (downloadButton) {
-				downloadButton.addEventListener('click', function () {
-					window.print();
-				});
-			}
 		});
 	});
 })();
