@@ -12,8 +12,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Plugin {
-	private const ASSO_POST_TYPE = 'associations';
-	private const ASSO_TAXONOMY  = 'associations';
+	private const ASSO_POST_TYPE        = 'associations';
+	private const ASSO_TAXONOMY         = 'association_category';
+	private const ASSO_LEGACY_TAXONOMY  = 'associations';
 
 	/** @var array<string,string> */
 	private const SOCIAL_NETWORKS = [
@@ -48,8 +49,11 @@ final class Plugin {
 		add_filter( 'theme_page_templates', [ __CLASS__, 'register_page_templates' ] );
 		add_filter( 'template_include', [ __CLASS__, 'handle_page_template' ], 99 );
 		add_action( 'admin_menu', [ __CLASS__, 'register_asso_import_page' ] );
+		add_action( 'admin_menu', [ __CLASS__, 'register_asso_taxonomy_migration_page' ] );
 		add_action( 'admin_menu', [ __CLASS__, 'register_agenda_import_page' ] );
+		add_action( 'template_redirect', [ __CLASS__, 'maybe_serve_timeline_ical' ] );
 		add_action( 'admin_post_plaidact_import_asso', [ __CLASS__, 'handle_asso_import' ] );
+		add_action( 'admin_post_plaidact_run_asso_taxonomy_migration', [ __CLASS__, 'handle_asso_taxonomy_migration' ] );
 		add_action( 'admin_post_plaidact_import_agenda', [ __CLASS__, 'handle_agenda_import' ] );
 	}
 
@@ -110,8 +114,9 @@ final class Plugin {
 					'menu_name'     => __( 'Répertoire Asso', 'plaidact-breves-feed' ),
 				],
 				'public'             => true,
-				'has_archive'        => 'associations',
-				'rewrite'            => [ 'slug' => 'associations', 'with_front' => false ],
+				'has_archive'        => 'association',
+				'rewrite'            => [ 'slug' => 'association', 'with_front' => false ],
+				'taxonomies'         => [ self::ASSO_TAXONOMY ],
 				'show_in_rest'       => true,
 				'menu_icon'          => 'dashicons-groups',
 				'supports'           => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
@@ -124,14 +129,39 @@ final class Plugin {
 			[ self::ASSO_POST_TYPE ],
 			[
 				'labels' => [
-					'name'          => __( 'Associations (taxonomie)', 'plaidact-breves-feed' ),
-					'singular_name' => __( 'Association (taxonomie)', 'plaidact-breves-feed' ),
+					'name'              => __( 'Catégories d’associations', 'plaidact-breves-feed' ),
+					'singular_name'     => __( 'Catégorie d’association', 'plaidact-breves-feed' ),
+					'menu_name'         => __( 'Catégories', 'plaidact-breves-feed' ),
+					'all_items'         => __( 'Toutes les catégories', 'plaidact-breves-feed' ),
+					'edit_item'         => __( 'Modifier la catégorie', 'plaidact-breves-feed' ),
+					'view_item'         => __( 'Voir la catégorie', 'plaidact-breves-feed' ),
+					'update_item'       => __( 'Mettre à jour la catégorie', 'plaidact-breves-feed' ),
+					'add_new_item'      => __( 'Ajouter une catégorie', 'plaidact-breves-feed' ),
+					'new_item_name'     => __( 'Nouvelle catégorie', 'plaidact-breves-feed' ),
+					'parent_item'       => __( 'Catégorie parente', 'plaidact-breves-feed' ),
+					'parent_item_colon' => __( 'Catégorie parente :', 'plaidact-breves-feed' ),
+					'search_items'      => __( 'Rechercher des catégories', 'plaidact-breves-feed' ),
 				],
 				'public'            => true,
 				'hierarchical'      => true,
+				'show_ui'           => true,
 				'show_in_rest'      => true,
 				'show_admin_column' => true,
-				'rewrite'           => [ 'slug' => 'associations-categorie', 'with_front' => false ],
+				'rewrite'           => [ 'slug' => 'association-categorie', 'with_front' => false ],
+			]
+		);
+
+		register_taxonomy(
+			self::ASSO_LEGACY_TAXONOMY,
+			[ self::ASSO_POST_TYPE ],
+			[
+				'public'            => false,
+				'hierarchical'      => true,
+				'show_ui'           => false,
+				'show_in_rest'      => false,
+				'show_admin_column' => false,
+				'rewrite'           => false,
+				'query_var'         => false,
 			]
 		);
 	}
@@ -251,6 +281,61 @@ final class Plugin {
 			'plaidact-asso-import',
 			[ __CLASS__, 'render_asso_import_page' ]
 		);
+	}
+
+
+	public static function register_asso_taxonomy_migration_page(): void {
+		add_submenu_page(
+			'edit.php?post_type=' . self::ASSO_POST_TYPE,
+			__( 'Migration catégories', 'plaidact-breves-feed' ),
+			__( 'Migration catégories', 'plaidact-breves-feed' ),
+			'manage_options',
+			'plaidact-asso-taxonomy-migration',
+			[ __CLASS__, 'render_asso_taxonomy_migration_page' ]
+		);
+	}
+
+	public static function render_asso_taxonomy_migration_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$done = isset( $_GET['migrated'] ) ? absint( wp_unslash( (string) $_GET['migrated'] ) ) : null;
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Migration des catégories associations', 'plaidact-breves-feed' ); ?></h1>
+			<?php if ( null !== $done ) : ?>
+				<div class="notice notice-success"><p><?php echo esc_html( sprintf( __( 'Migration terminée : %d affectations traitées.', 'plaidact-breves-feed' ), $done ) ); ?></p></div>
+			<?php endif; ?>
+			<p><?php esc_html_e( 'Cliquez sur le bouton pour migrer manuellement les anciennes catégories vers la nouvelle taxonomie.', 'plaidact-breves-feed' ); ?></p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<?php wp_nonce_field( 'plaidact_run_asso_taxonomy_migration' ); ?>
+				<input type="hidden" name="action" value="plaidact_run_asso_taxonomy_migration" />
+				<?php submit_button( __( 'Lancer la migration', 'plaidact-breves-feed' ) ); ?>
+			</form>
+		</div>
+		<?php
+	}
+
+	public static function handle_asso_taxonomy_migration(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Accès refusé.', 'plaidact-breves-feed' ) );
+		}
+
+		check_admin_referer( 'plaidact_run_asso_taxonomy_migration' );
+		$migrated = self::migrate_legacy_asso_taxonomy_terms( true );
+
+		wp_safe_redirect(
+			add_query_arg(
+				[
+					'post_type' => self::ASSO_POST_TYPE,
+					'page'      => 'plaidact-asso-taxonomy-migration',
+					'migrated'  => (string) $migrated,
+				],
+				admin_url( 'edit.php' )
+			)
+		);
+		exit;
 	}
 
 	public static function register_agenda_import_page(): void {
@@ -401,7 +486,7 @@ Linktree|https://linktr.ee/acat"',
 		if ( is_tax( 'agenda_timeline' ) ) {
 			return PLAIDACT_BREVES_FEED_PATH . 'templates/taxonomy-agenda_timeline.php';
 		}
-		if ( is_tax( self::ASSO_TAXONOMY ) ) {
+		if ( is_tax( self::ASSO_TAXONOMY ) || is_tax( self::ASSO_LEGACY_TAXONOMY ) ) {
 			return PLAIDACT_BREVES_FEED_PATH . 'templates/archive-asso.php';
 		}
 		if ( is_post_type_archive( self::ASSO_POST_TYPE ) ) {
@@ -739,6 +824,150 @@ Linktree|https://linktr.ee/acat"',
 			'years' => $years,
 			'term'  => $term instanceof WP_Term ? $term : null,
 		];
+	}
+
+
+
+	public static function migrate_legacy_asso_taxonomy_terms( bool $force = false ): int {
+		if ( ! $force && '1' === (string) get_option( 'plaidact_asso_taxonomy_migrated', '0' ) ) {
+			return 0;
+		}
+
+		$legacy_terms = get_terms(
+			[
+				'taxonomy'   => self::ASSO_LEGACY_TAXONOMY,
+				'hide_empty' => false,
+			]
+		);
+
+		if ( is_wp_error( $legacy_terms ) || ! is_array( $legacy_terms ) || empty( $legacy_terms ) ) {
+			update_option( 'plaidact_asso_taxonomy_migrated', '1', false );
+			return 0;
+		}
+
+		$migrated_count = 0;
+
+		foreach ( $legacy_terms as $legacy_term ) {
+			if ( ! $legacy_term instanceof WP_Term ) {
+				continue;
+			}
+
+			$target = term_exists( $legacy_term->slug, self::ASSO_TAXONOMY );
+			if ( ! $target ) {
+				$target = wp_insert_term(
+					$legacy_term->name,
+					self::ASSO_TAXONOMY,
+					[
+						'slug'        => $legacy_term->slug,
+						'description' => $legacy_term->description,
+						'parent'      => 0,
+					]
+				);
+			}
+
+			if ( is_wp_error( $target ) || ! is_array( $target ) || ! isset( $target['term_id'] ) ) {
+				continue;
+			}
+
+			$legacy_term_id = (int) $legacy_term->term_id;
+			$new_term_id    = (int) $target['term_id'];
+
+			$object_ids = get_objects_in_term( $legacy_term_id, self::ASSO_LEGACY_TAXONOMY );
+			if ( is_wp_error( $object_ids ) || empty( $object_ids ) ) {
+				continue;
+			}
+
+			foreach ( $object_ids as $object_id ) {
+				$result = wp_set_object_terms( (int) $object_id, [ $new_term_id ], self::ASSO_TAXONOMY, true );
+				if ( ! is_wp_error( $result ) ) {
+					$migrated_count++;
+				}
+			}
+		}
+
+		update_option( 'plaidact_asso_taxonomy_migrated', '1', false );
+		return $migrated_count;
+	}
+
+	public static function maybe_serve_timeline_ical(): void {
+		$timeline = isset( $_GET['plaidact_timeline_ical'] ) ? sanitize_title( wp_unslash( (string) $_GET['plaidact_timeline_ical'] ) ) : '';
+		if ( '' === $timeline ) {
+			return;
+		}
+
+		self::serve_timeline_ical( $timeline );
+	}
+
+	private static function serve_timeline_ical( string $timeline_slug ): void {
+		$payload = self::build_timeline_data( $timeline_slug, false );
+		$term    = $payload['term'] ?? null;
+		if ( ! $term instanceof WP_Term ) {
+			status_header( 404 );
+			exit;
+		}
+
+		$ical = self::build_timeline_ical_content( $payload );
+		header( 'Content-Type: text/calendar; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="agenda-' . sanitize_file_name( $timeline_slug ) . '.ics"' );
+		header( 'Cache-Control: no-cache, must-revalidate' );
+		echo $ical; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		exit;
+	}
+
+	/** @param array{years: array<int,array{year:int,months:array<int,array{month:int,month_name:string,events:array}>}>, term: WP_Term|null} $payload */
+	private static function build_timeline_ical_content( array $payload ): string {
+		$term = $payload['term'];
+		$events = [];
+		foreach ( $payload['years'] as $year_data ) {
+			foreach ( $year_data['months'] as $month_data ) {
+				foreach ( $month_data['events'] as $event ) {
+					$events[ (int) $event['id'] ] = $event;
+				}
+			}
+		}
+
+		$now = gmdate( 'Ymd\THis\Z' );
+		$lines = [
+			'BEGIN:VCALENDAR',
+			'VERSION:2.0',
+			'PRODID:-//PlaidAct//Agenda//FR',
+			'CALSCALE:GREGORIAN',
+			'METHOD:PUBLISH',
+			'X-WR-CALNAME:' . self::escape_ical_text( $term instanceof WP_Term ? $term->name : __( 'Agenda PlaidAct', 'plaidact-breves-feed' ) ),
+		];
+
+		foreach ( $events as $event ) {
+			$start = $event['date_debut'] instanceof DateTimeImmutable ? $event['date_debut'] : null;
+			if ( ! $start ) {
+				continue;
+			}
+			$end = $event['date_fin'] instanceof DateTimeImmutable ? $event['date_fin'] : null;
+			if ( ! $end || $end < $start ) {
+				$end = $start;
+			}
+			$end_exclusive = $end->modify( '+1 day' );
+			$lines[] = 'BEGIN:VEVENT';
+			$lines[] = 'UID:agenda-' . (int) $event['id'] . '-' . $start->format( 'Ymd' ) . '@plaidact.org';
+			$lines[] = 'DTSTAMP:' . $now;
+			$lines[] = 'DTSTART;VALUE=DATE:' . $start->format( 'Ymd' );
+			$lines[] = 'DTEND;VALUE=DATE:' . $end_exclusive->format( 'Ymd' );
+			$lines[] = 'SUMMARY:' . self::escape_ical_text( (string) ( $event['title'] ?? '' ) );
+			if ( ! empty( $event['lieu'] ) ) {
+				$lines[] = 'LOCATION:' . self::escape_ical_text( (string) $event['lieu'] );
+			}
+			if ( ! empty( $event['url'] ) ) {
+				$lines[] = 'URL:' . esc_url_raw( (string) $event['url'] );
+			}
+			$lines[] = 'END:VEVENT';
+		}
+
+		$lines[] = 'END:VCALENDAR';
+		return implode( "\r\n", $lines ) . "\r\n";
+	}
+
+	private static function escape_ical_text( string $value ): string {
+		$value = str_replace( [ '\\', ';', ',', "\r\n", "\n", "\r" ], [ '\\\\', '\;', '\,', '\n', '\n', '\n' ], $value );
+		return trim( $value );
 	}
 
 	public static function parse_acf_date( string $raw ): ?DateTimeImmutable {

@@ -27,7 +27,7 @@ $plaidact_logo = 'https://plaidact.org/wp-content/uploads/2026/01/Capture-decran
 	<?php endif; ?>
 	<?php if ( $show_download ) : ?>
 		<div class="pa-timeline-actions">
-			<button type="button" class="pa-timeline-download" data-timeline-print="<?php echo esc_attr( $slug ); ?>"><?php esc_html_e( 'Télécharger la timeline', 'plaidact-breves-feed' ); ?></button>
+			<a class="pa-timeline-download" href="<?php echo esc_url( add_query_arg( 'plaidact_timeline_ical', $slug, home_url( '/' ) ) ); ?>"><?php esc_html_e( 'Télécharger en iCal (.ics)', 'plaidact-breves-feed' ); ?></a>
 		</div>
 	<?php endif; ?>
 
