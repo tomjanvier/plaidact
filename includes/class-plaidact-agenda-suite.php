@@ -51,6 +51,7 @@ final class Plugin {
 		add_action( 'admin_menu', [ __CLASS__, 'register_agenda_import_page' ] );
 		add_action( 'template_redirect', [ __CLASS__, 'maybe_serve_timeline_ical' ] );
 		add_action( 'admin_post_plaidact_import_asso', [ __CLASS__, 'handle_asso_import' ] );
+		add_action( 'admin_post_plaidact_migrate_asso_taxonomies', [ __CLASS__, 'handle_asso_taxonomy_migration' ] );
 		add_action( 'admin_post_plaidact_import_agenda', [ __CLASS__, 'handle_agenda_import' ] );
 	}
 
@@ -143,6 +144,7 @@ final class Plugin {
 				'hierarchical'      => true,
 				'show_ui'           => true,
 				'show_in_rest'      => true,
+				'rest_base'         => 'association-categories',
 				'show_admin_column' => true,
 				'rewrite'           => [ 'slug' => 'association-categorie', 'with_front' => false ],
 			]
@@ -284,6 +286,8 @@ final class Plugin {
 		$status = isset( $_GET['status'] ) ? sanitize_key( (string) $_GET['status'] ) : '';
 		$count  = isset( $_GET['count'] ) ? absint( $_GET['count'] ) : 0;
 		$error  = isset( $_GET['error'] ) ? sanitize_text_field( (string) $_GET['error'] ) : '';
+		$migrated_posts = isset( $_GET['migrated_posts'] ) ? absint( $_GET['migrated_posts'] ) : 0;
+		$migrated_terms = isset( $_GET['migrated_terms'] ) ? absint( $_GET['migrated_terms'] ) : 0;
 		$template_headers = implode( ',', self::get_asso_import_headers() );
 		$template_row = implode( ',', [
 			'ACAT France',
@@ -315,6 +319,8 @@ Linktree|https://linktr.ee/acat"',
 			<h1><?php esc_html_e( 'Import des associations', 'plaidact-breves-feed' ); ?></h1>
 			<?php if ( 'ok' === $status ) : ?>
 				<div class="notice notice-success"><p><?php echo esc_html( sprintf( __( '%d associations importées/mises à jour.', 'plaidact-breves-feed' ), $count ) ); ?></p></div>
+			<?php elseif ( 'taxonomy_migrated' === $status ) : ?>
+				<div class="notice notice-success"><p><?php echo esc_html( sprintf( __( 'Migration terminée : %1$d associations mises à jour, %2$d catégories migrées.', 'plaidact-breves-feed' ), $migrated_posts, $migrated_terms ) ); ?></p></div>
 			<?php elseif ( 'error' === $status && '' !== $error ) : ?>
 				<div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div>
 			<?php endif; ?>
@@ -339,6 +345,15 @@ Linktree|https://linktr.ee/acat"',
 					</tr>
 				</table>
 				<?php submit_button( __( 'Importer', 'plaidact-breves-feed' ) ); ?>
+			</form>
+
+			<hr />
+			<h2><?php esc_html_e( 'Migration des taxonomies', 'plaidact-breves-feed' ); ?></h2>
+			<p><?php esc_html_e( 'Ce bouton copie les catégories WordPress existantes (taxonomy "category") des fiches associations vers la taxonomy "Catégories d’associations".', 'plaidact-breves-feed' ); ?></p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<?php wp_nonce_field( 'plaidact_migrate_asso_taxonomies' ); ?>
+				<input type="hidden" name="action" value="plaidact_migrate_asso_taxonomies" />
+				<?php submit_button( __( 'Migrer les taxonomies existantes', 'plaidact-breves-feed' ), 'secondary' ); ?>
 			</form>
 		</div>
 		<?php
@@ -1285,6 +1300,83 @@ Linktree|https://linktr.ee/acat"',
 		}
 		fclose( $handle );
 		self::redirect_agenda_import( $count, $dupes );
+	}
+
+	public static function handle_asso_taxonomy_migration(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Accès refusé.', 'plaidact-breves-feed' ) );
+		}
+		check_admin_referer( 'plaidact_migrate_asso_taxonomies' );
+
+		$posts = get_posts(
+			[
+				'post_type'      => self::ASSO_POST_TYPE,
+				'post_status'    => [ 'publish', 'draft', 'pending', 'future', 'private' ],
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
+			]
+		);
+
+		$migrated_posts = 0;
+		$migrated_terms = 0;
+
+		foreach ( $posts as $post_id ) {
+			$legacy_terms = wp_get_object_terms(
+				(int) $post_id,
+				'category',
+				[
+					'fields' => 'names',
+				]
+			);
+			if ( is_wp_error( $legacy_terms ) || ! is_array( $legacy_terms ) || [] === $legacy_terms ) {
+				continue;
+			}
+
+			$target_term_ids = [];
+			foreach ( $legacy_terms as $legacy_term_name ) {
+				$legacy_term_name = sanitize_text_field( (string) $legacy_term_name );
+				if ( '' === $legacy_term_name ) {
+					continue;
+				}
+				$term = term_exists( $legacy_term_name, self::ASSO_TAXONOMY );
+				if ( 0 === $term || null === $term ) {
+					$term = wp_insert_term( $legacy_term_name, self::ASSO_TAXONOMY );
+				}
+				if ( is_wp_error( $term ) ) {
+					continue;
+				}
+				$term_id = (int) ( is_array( $term ) ? ( $term['term_id'] ?? 0 ) : $term );
+				if ( $term_id > 0 ) {
+					$target_term_ids[] = $term_id;
+				}
+			}
+
+			if ( [] === $target_term_ids ) {
+				continue;
+			}
+
+			$assigned = wp_set_object_terms( (int) $post_id, array_values( array_unique( $target_term_ids ) ), self::ASSO_TAXONOMY, true );
+			if ( is_wp_error( $assigned ) ) {
+				continue;
+			}
+			$migrated_posts++;
+			$migrated_terms += count( $target_term_ids );
+		}
+
+		wp_safe_redirect(
+			add_query_arg(
+				[
+					'post_type'      => self::ASSO_POST_TYPE,
+					'page'           => 'plaidact-asso-import',
+					'status'         => 'taxonomy_migrated',
+					'migrated_posts' => $migrated_posts,
+					'migrated_terms' => $migrated_terms,
+				],
+				admin_url( 'edit.php' )
+			)
+		);
+		exit;
 	}
 
 	private static function redirect_import_error( string $message ): void {
