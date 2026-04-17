@@ -58,7 +58,7 @@
 .plaidact-asso-single__summary{font-size:1rem;line-height:1.6;color:var(--plaid-text);background:#f7f2fd;padding:.8rem .9rem;border-radius:12px;border:1px solid #e5d8f4}
 .plaidact-asso-socials{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.65rem}
 .plaidact-asso-socials__link{display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .58rem;border-radius:999px;border:1px solid #d8c8ea;background:#fff;color:var(--plaid-purple-2);text-decoration:none;font-size:.8rem;font-weight:600}
-.plaidact-asso-single__edit-note{margin:.85rem 0 0;color:var(--plaid-muted);font-size:.82rem;line-height:1.45}
+.plaidact-asso-single__edit-note{margin:.7rem 0 0;color:var(--plaid-muted);font-size:.76rem;line-height:1.45;font-style:italic}
 .plaidact-asso-single__edit-note a{color:var(--plaid-purple-2);text-decoration:underline}
 .plaidact-asso-single__content{margin-top:1rem;line-height:1.72;color:var(--plaid-text)}
 .plaidact-asso-single__meta-grid{display:grid;grid-template-columns:1fr;gap:.9rem;margin-top:1rem;background:var(--plaid-lilac);border:1px solid var(--plaid-lilac-2);padding:1rem;border-radius:14px}

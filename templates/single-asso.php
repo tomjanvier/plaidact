@@ -40,6 +40,17 @@ $asso_taxonomy = Plugin::get_asso_taxonomy();
 							<?php endforeach; ?>
 						</div>
 					<?php endif; ?>
+				</div>
+			</header>
+
+			<div class="plaidact-asso-single__content"><?php the_content(); ?></div>
+
+			<section class="plaidact-asso-single__meta-grid">
+				<div>
+					<h2><?php esc_html_e( 'Causes', 'plaidact-breves-feed' ); ?></h2>
+					<div class="plaidact-asso-tags">
+						<?php foreach ( ( get_the_terms( get_the_ID(), $asso_taxonomy ) ?: [] ) as $term ) : ?><span><?php echo esc_html( $term->name ); ?></span><?php endforeach; ?>
+					</div>
 					<p class="plaidact-asso-single__edit-note">
 						<?php
 						echo wp_kses(
@@ -56,17 +67,6 @@ $asso_taxonomy = Plugin::get_asso_taxonomy();
 						);
 						?>
 					</p>
-				</div>
-			</header>
-
-			<div class="plaidact-asso-single__content"><?php the_content(); ?></div>
-
-			<section class="plaidact-asso-single__meta-grid">
-				<div>
-					<h2><?php esc_html_e( 'Causes', 'plaidact-breves-feed' ); ?></h2>
-					<div class="plaidact-asso-tags">
-						<?php foreach ( ( get_the_terms( get_the_ID(), $asso_taxonomy ) ?: [] ) as $term ) : ?><span><?php echo esc_html( $term->name ); ?></span><?php endforeach; ?>
-					</div>
 				</div>
 			</section>
 
