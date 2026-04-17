@@ -256,18 +256,6 @@ final class PlaidAct_Breves_Feed {
 	}
 
 	public function get_link_data( int $post_id ): array {
-		$external = function_exists( 'get_field' ) ? (string) get_field( 'url_externe', $post_id ) : '';
-		$external = trim( $external );
-
-		if ( '' !== $external ) {
-			return array(
-				'url'         => $external,
-				'target'      => '_blank',
-				'rel'         => 'noopener noreferrer',
-				'is_external' => true,
-			);
-		}
-
 		return array(
 			'url'         => get_permalink( $post_id ),
 			'target'      => '_self',

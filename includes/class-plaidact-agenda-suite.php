@@ -146,7 +146,7 @@ final class Plugin {
 				'show_in_rest'      => true,
 				'rest_base'         => 'association-categories',
 				'show_admin_column' => true,
-				'rewrite'           => [ 'slug' => 'association-categorie', 'with_front' => false ],
+				'rewrite'           => [ 'slug' => 'association', 'with_front' => false ],
 			]
 		);
 	}

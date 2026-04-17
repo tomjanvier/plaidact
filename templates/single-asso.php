@@ -40,6 +40,22 @@ $asso_taxonomy = Plugin::get_asso_taxonomy();
 							<?php endforeach; ?>
 						</div>
 					<?php endif; ?>
+					<p class="plaidact-asso-single__edit-note">
+						<?php
+						echo wp_kses(
+							sprintf(
+								/* translators: %s association name. */
+								__( 'Si vous êtes représentant·e de %s, n’hésitez pas à <a href="%s">nous contacter</a> pour modifier votre fiche.', 'plaidact-breves-feed' ),
+								'<strong>' . esc_html( get_the_title() ) . '</strong>',
+								esc_url( 'https://plaidact.org/nous-contacter/' )
+							),
+							[
+								'a'      => [ 'href' => [] ],
+								'strong' => [],
+							]
+						);
+						?>
+					</p>
 				</div>
 			</header>
 

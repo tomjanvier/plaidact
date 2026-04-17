@@ -25,6 +25,16 @@ get_header();
 					<?php endif; ?>
 				</p>
 				<h1 class="plaidact-single-breve__title"><?php the_title(); ?></h1>
+				<?php
+				$source_url = function_exists( 'get_field' ) ? trim( (string) get_field( 'url_externe' ) ) : '';
+				if ( '' !== $source_url ) :
+					?>
+					<p class="plaidact-single-breve__source-wrap">
+						<a class="plaidact-single-breve__source-btn" href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noopener noreferrer">
+							<?php esc_html_e( 'Voir la source pour en savoir plus', 'plaidact-breves-feed' ); ?>
+						</a>
+					</p>
+				<?php endif; ?>
 			</header>
 			<div class="plaidact-single-breve__content"><?php the_content(); ?></div>
 		</article>
