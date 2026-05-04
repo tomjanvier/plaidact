@@ -61,6 +61,7 @@
 .plaidact-asso-single__edit-note{margin:.7rem 0 0;color:var(--plaid-muted);font-size:.76rem;line-height:1.45;font-style:italic}
 .plaidact-asso-single__edit-note a{color:var(--plaid-purple-2);text-decoration:underline}
 .plaidact-asso-single__content{margin-top:1rem;line-height:1.72;color:var(--plaid-text)}
+.plaidact-asso-single__meta-grid .plaidact-asso-single__content{margin-top:.35rem}
 .plaidact-asso-single__meta-grid{display:grid;grid-template-columns:1fr;gap:.9rem;margin-top:1rem;background:var(--plaid-lilac);border:1px solid var(--plaid-lilac-2);padding:1rem;border-radius:14px}
 .plaidact-asso-related{margin-top:1.5rem}
 .plaidact-asso-related h2{font-size:1.25rem;color:var(--plaid-purple)}

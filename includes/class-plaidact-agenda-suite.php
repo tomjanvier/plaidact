@@ -53,6 +53,7 @@ final class Plugin {
 		add_action( 'admin_post_plaidact_import_asso', [ __CLASS__, 'handle_asso_import' ] );
 		add_action( 'admin_post_plaidact_migrate_asso_taxonomies', [ __CLASS__, 'handle_asso_taxonomy_migration' ] );
 		add_action( 'admin_post_plaidact_import_agenda', [ __CLASS__, 'handle_agenda_import' ] );
+		add_action( 'pre_get_posts', [ __CLASS__, 'include_associations_in_site_search' ] );
 	}
 
 	public static function register_agenda_post_type(): void {
@@ -119,6 +120,7 @@ final class Plugin {
 				'menu_icon'          => 'dashicons-groups',
 				'supports'           => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
 				'publicly_queryable' => true,
+				'exclude_from_search' => false,
 			]
 		);
 
@@ -146,9 +148,30 @@ final class Plugin {
 				'show_in_rest'      => true,
 				'rest_base'         => 'association-categories',
 				'show_admin_column' => true,
-				'rewrite'           => [ 'slug' => 'association', 'with_front' => false ],
+				'rewrite'           => [ 'slug' => 'association-categorie', 'with_front' => false ],
 			]
 		);
+	}
+
+	public static function include_associations_in_site_search( WP_Query $query ): void {
+		if ( is_admin() || ! $query->is_main_query() || ! $query->is_search() ) {
+			return;
+		}
+
+		$post_types = $query->get( 'post_type' );
+		if ( empty( $post_types ) ) {
+			$query->set( 'post_type', [ 'post', 'page', self::ASSO_POST_TYPE ] );
+			return;
+		}
+
+		if ( is_string( $post_types ) ) {
+			$post_types = [ $post_types ];
+		}
+
+		if ( is_array( $post_types ) && ! in_array( self::ASSO_POST_TYPE, $post_types, true ) ) {
+			$post_types[] = self::ASSO_POST_TYPE;
+			$query->set( 'post_type', $post_types );
+		}
 	}
 
 	public static function register_hover_definitions(): void {
