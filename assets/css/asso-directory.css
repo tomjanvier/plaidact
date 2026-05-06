@@ -83,3 +83,11 @@
 .plaidact-hover-card__title{display:block;color:var(--plaid-purple);margin-bottom:.25rem}
 .plaidact-hover-card__desc{display:block;margin:0;color:var(--plaid-text);font-size:.84rem;line-height:1.4}
 .plaidact-hover-card__btn{margin-top:.15rem;display:inline-flex;background:var(--plaid-purple);color:#fff;padding:.35rem .65rem;border-radius:999px;text-decoration:none;font-size:.78rem;font-weight:700}
+
+.plaidact-asso-alpha{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.8rem}
+.plaidact-asso-alpha a,.plaidact-asso-alpha span{display:inline-flex;align-items:center;justify-content:center;min-width:1.9rem;height:1.9rem;border-radius:999px;border:1px solid #d8c8ea;font-weight:700;text-decoration:none;color:var(--plaid-purple);font-size:.78rem}
+.plaidact-asso-alpha a.is-active{background:var(--plaid-purple);color:#fff;border-color:var(--plaid-purple)}
+.plaidact-asso-alpha .is-disabled{opacity:.35}
+.plaidact-asso-back{display:inline-flex;align-items:center;gap:.25rem;margin-bottom:.8rem;color:var(--plaid-purple);text-decoration:none;font-weight:700}
+.plaidact-asso-back:hover{text-decoration:underline}
+.plaidact-asso-tags a{font-size:.7rem;background:#f3eff8;color:#4a3b63;padding:.15rem .45rem;border-radius:999px;text-decoration:none}

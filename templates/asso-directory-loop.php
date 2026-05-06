@@ -9,7 +9,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 $posts_per_page = isset( $posts_per_page ) ? max( 1, absint( $posts_per_page ) ) : 9;
 $asso_taxonomy = Plugin::get_asso_taxonomy();
 $filters = Plugin::get_asso_filters_from_request();
-$query   = new WP_Query( Plugin::get_asso_query_args( $filters, $posts_per_page, isset( $fixed_cause ) ? (string) $fixed_cause : '' ) );
+$query_args = Plugin::get_asso_query_args( $filters, $posts_per_page, isset( $fixed_cause ) ? (string) $fixed_cause : '' );
+add_filter( 'posts_where', [ Plugin::class, 'filter_asso_title_like' ], 10, 2 );
+$query   = new WP_Query( $query_args );
+remove_filter( 'posts_where', [ Plugin::class, 'filter_asso_title_like' ], 10 );
 $causes  = get_terms( [ 'taxonomy' => $asso_taxonomy, 'hide_empty' => false ] );
 $fixed_cause = isset( $fixed_cause ) ? sanitize_title( (string) $fixed_cause ) : '';
 $pagination_key = isset( $pagination_key ) && '' !== $pagination_key ? sanitize_key( (string) $pagination_key ) : 'asso_page';
@@ -38,9 +41,40 @@ $pagination_key = isset( $pagination_key ) && '' !== $pagination_key ? sanitize_
 				<input type="hidden" name="asso_cause" value="<?php echo esc_attr( $fixed_cause ); ?>" />
 			<?php endif; ?>
 		</div>
+		<div class="plaidact-asso-alpha" aria-label="<?php esc_attr_e( 'Filtrer par lettre', 'plaidact-breves-feed' ); ?>">
+			<?php foreach ( range( 'A', 'Z' ) as $letter ) : ?>
+				<?php
+				$letter_url = add_query_arg( [
+					'asso_letter' => $letter,
+					'asso_s'      => (string) $filters['s'],
+					'asso_cause'  => '' !== $fixed_cause ? $fixed_cause : (string) $filters['cause'],
+				] );
+				$has_posts_for_letter = new WP_Query( [
+					'post_type'           => 'associations',
+					'post_status'         => 'publish',
+					'posts_per_page'      => 1,
+					'fields'              => 'ids',
+					'no_found_rows'       => true,
+					'post_title_like'     => $letter . '%',
+					'tax_query'           => '' !== $fixed_cause || '' !== (string) $filters['cause'] ? [ [
+						'taxonomy' => $asso_taxonomy,
+						'field'    => 'slug',
+						'terms'    => '' !== $fixed_cause ? $fixed_cause : (string) $filters['cause'],
+					] ] : [],
+				] );
+				?>
+				<?php if ( $has_posts_for_letter->have_posts() ) : ?>
+					<a class="<?php echo ( (string) $filters['letter'] === $letter ) ? 'is-active' : ''; ?>" href="<?php echo esc_url( $letter_url ); ?>"><?php echo esc_html( $letter ); ?></a>
+				<?php else : ?>
+					<span class="is-disabled"><?php echo esc_html( $letter ); ?></span>
+				<?php endif; ?>
+				<?php wp_reset_postdata(); ?>
+			<?php endforeach; ?>
+		</div>
+
 		<div class="plaidact-asso-filter-actions">
 			<button type="submit"><?php esc_html_e( 'Filtrer', 'plaidact-breves-feed' ); ?></button>
-			<a href="<?php echo esc_url( remove_query_arg( [ 'asso_s', 'asso_cause', $pagination_key, 'paged' ] ) ); ?>"><?php esc_html_e( 'Réinitialiser', 'plaidact-breves-feed' ); ?></a>
+			<a href="<?php echo esc_url( remove_query_arg( [ 'asso_s', 'asso_cause', 'asso_letter', $pagination_key, 'paged' ] ) ); ?>"><?php esc_html_e( 'Réinitialiser', 'plaidact-breves-feed' ); ?></a>
 		</div>
 	</form>
 
@@ -62,6 +96,7 @@ $pagination_key = isset( $pagination_key ) && '' !== $pagination_key ? sanitize_
 						'add_args'  => [
 							'asso_s' => (string) $filters['s'],
 							'asso_cause' => '' !== $fixed_cause ? $fixed_cause : (string) $filters['cause'],
+							'asso_letter' => (string) ( $filters['letter'] ?? '' ),
 						],
 					]
 				)

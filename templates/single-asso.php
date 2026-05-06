@@ -12,6 +12,7 @@ $asso_taxonomy = Plugin::get_asso_taxonomy();
 <main id="site-content" class="plaidact-asso-single-wrap">
 	<?php while ( have_posts() ) : the_post(); ?>
 		<article <?php post_class( 'plaidact-asso-single' ); ?>>
+			<a class="plaidact-asso-back" href="<?php echo esc_url( get_post_type_archive_link( 'associations' ) ?: home_url( '/association/' ) ); ?>">← <?php esc_html_e( 'Retour au répertoire', 'plaidact-breves-feed' ); ?></a>
 			<header class="plaidact-asso-single__header">
 				<div class="plaidact-asso-single__media">
 					<?php if ( has_post_thumbnail() ) { the_post_thumbnail( 'large' ); } ?>
@@ -19,7 +20,7 @@ $asso_taxonomy = Plugin::get_asso_taxonomy();
 				<div class="plaidact-asso-single__hero">
 					<h1><?php the_title(); ?></h1>
 					<div class="plaidact-asso-tags">
-						<?php foreach ( ( get_the_terms( get_the_ID(), $asso_taxonomy ) ?: [] ) as $term ) : ?><span><?php echo esc_html( $term->name ); ?></span><?php endforeach; ?>
+						<?php foreach ( ( get_the_terms( get_the_ID(), $asso_taxonomy ) ?: [] ) as $term ) : ?><a href="<?php echo esc_url( get_term_link( $term ) ); ?>"><?php echo esc_html( $term->name ); ?></a><?php endforeach; ?>
 					</div>
 					<div class="plaidact-asso-card__actions">
 						<?php if ( get_field( 'url_web' ) ) : ?><a class="plaidact-btn" href="<?php echo esc_url( (string) get_field( 'url_web' ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Visiter le site web', 'plaidact-breves-feed' ); ?></a><?php endif; ?>

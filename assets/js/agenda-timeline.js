@@ -46,6 +46,34 @@
 				}
 			}
 
+			var nextBtn = timeline.querySelector('.pa-timeline-next-event');
+			if (nextBtn) {
+				nextBtn.addEventListener('click', function () {
+					var nowTs = Math.floor(Date.now() / 1000);
+					var events = [].slice.call(timeline.querySelectorAll('.pa-event[data-event-ts]'));
+					var nearest = null;
+					var minDelta = Number.POSITIVE_INFINITY;
+
+					events.forEach(function (evt) {
+						var ts = parseInt(evt.getAttribute('data-event-ts') || '0', 10);
+						if (!ts) {
+							return;
+						}
+						var delta = Math.abs(ts - nowTs);
+						if (delta < minDelta) {
+							minDelta = delta;
+							nearest = evt;
+						}
+					});
+
+					if (nearest) {
+						nearest.scrollIntoView({ behavior: 'smooth', block: 'center' });
+						nearest.classList.add('is-highlighted');
+						setTimeout(function () { nearest.classList.remove('is-highlighted'); }, 1600);
+					}
+				});
+			}
+
 		});
 	});
 })();

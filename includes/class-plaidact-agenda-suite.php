@@ -539,9 +539,10 @@ Linktree|https://linktr.ee/acat"',
 		$asso_page        = isset( $_GET['asso_page'] ) ? absint( wp_unslash( (string) $_GET['asso_page'] ) ) : 0;
 
 		return [
-			's'     => isset( $_GET['asso_s'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['asso_s'] ) ) : '',
-			'cause' => isset( $_GET['asso_cause'] ) ? sanitize_title( wp_unslash( (string) $_GET['asso_cause'] ) ) : '',
-			'paged' => max( 1, $asso_page, $paged_from_get, $paged_from_query, $paged_from_page ),
+			's'      => isset( $_GET['asso_s'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['asso_s'] ) ) : '',
+			'cause'  => isset( $_GET['asso_cause'] ) ? sanitize_title( wp_unslash( (string) $_GET['asso_cause'] ) ) : '',
+			'letter' => isset( $_GET['asso_letter'] ) ? strtoupper( substr( sanitize_text_field( wp_unslash( (string) $_GET['asso_letter'] ) ), 0, 1 ) ) : '',
+			'paged'  => max( 1, $asso_page, $paged_from_get, $paged_from_query, $paged_from_page ),
 		];
 	}
 
@@ -558,6 +559,14 @@ Linktree|https://linktr.ee/acat"',
 			's'              => (string) $filters['s'],
 		];
 
+		if ( '' === trim( (string) $filters['s'] ) && '' === (string) $filters['cause'] && '' === $fixed_cause && '' === (string) ( $filters['letter'] ?? '' ) ) {
+			$args['orderby'] = 'rand';
+		}
+
+		if ( ! empty( $filters['letter'] ) ) {
+			$args['post_title_like'] = sanitize_text_field( (string) $filters['letter'] ) . '%';
+		}
+
 		$target_cause = '' !== $fixed_cause ? $fixed_cause : (string) $filters['cause'];
 		if ( '' !== $target_cause ) {
 			$args['tax_query'] = [
@@ -570,6 +579,16 @@ Linktree|https://linktr.ee/acat"',
 		}
 
 		return $args;
+	}
+
+	public static function filter_asso_title_like( string $where, WP_Query $query ): string {
+		global $wpdb;
+		$title_like = $query->get( 'post_title_like' );
+		if ( ! is_string( $title_like ) || '' === $title_like ) {
+			return $where;
+		}
+
+		return $where . $wpdb->prepare( " AND {$wpdb->posts}.post_title LIKE %s", $title_like );
 	}
 
 	/** @return array<string,mixed> */
