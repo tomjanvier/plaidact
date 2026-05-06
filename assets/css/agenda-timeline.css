@@ -1,6 +1,6 @@
 .pa-timeline{--pa-purple:#2A1738;--pa-purple-soft:#f5effd;--pa-lilac-mid:#d8c8ea;--pa-text:#2f2240;--pa-text-muted:#6b5d7a;--pa-white:#fff;--pa-radius:12px;max-width:930px;margin-inline:auto;padding:2rem 1rem 3rem;color:var(--pa-text);background:#fff}
 .pa-timeline-title{font-size:clamp(1.45rem,3vw,2rem);font-weight:900;color:var(--pa-purple);margin:0 0 1.4rem}
-.pa-timeline-actions{display:flex;justify-content:flex-end;margin:-.8rem 0 1rem}
+.pa-timeline-actions{display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap;margin:-.8rem 0 1rem}
 .pa-timeline-download{border:1px solid #d7c4eb;background:#fff;color:var(--pa-purple);border-radius:999px;padding:.42rem .82rem;font-size:.78rem;font-weight:700;cursor:pointer}
 .pa-timeline-download:hover,.pa-timeline-download:focus{background:var(--pa-purple);color:#fff;border-color:var(--pa-purple)}
 .pa-timeline-print-brand{display:none}
@@ -35,3 +35,7 @@
 .pa-timeline--horizontal .pa-event-title,.pa-month-block--multi-col .pa-event-title{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3;display:block}
 @media (max-width:600px){.pa-timeline{padding:1.1rem .82rem 2rem}.pa-months-wrapper{padding-left:0}.pa-months-wrapper:before,.pa-month-dot{display:none}.pa-month-heading{background:var(--pa-purple-soft);border-radius:8px;padding:.35rem .63rem}.pa-years-nav{position:static;border-radius:14px}.pa-event{grid-template-columns:2.5rem 1fr auto;grid-template-areas:"date body action" ". logo ."}.pa-event-title{white-space:normal;font-size:.85rem}.pa-timeline--horizontal .pa-months-wrapper{grid-template-columns:1fr}}
 @media print{.pa-event--noprint,.pa-years-nav,.pa-event-cta,.pa-timeline-actions{display:none!important}.pa-event{border:1px solid #ccc!important;box-shadow:none!important}.pa-timeline-print-brand{display:block!important;position:fixed;right:10mm;bottom:8mm;width:95px;opacity:.9}.pa-timeline-print-brand img{width:100%;height:auto;display:block}}
+
+.pa-timeline-next-event{border:1px solid #d7c4eb;background:#fff;color:var(--pa-purple);border-radius:999px;padding:.42rem .82rem;font-size:.78rem;font-weight:700;cursor:pointer}
+.pa-timeline-next-event:hover,.pa-timeline-next-event:focus{background:var(--pa-purple);color:#fff;border-color:var(--pa-purple)}
+.pa-event.is-highlighted{outline:2px solid var(--pa-purple);box-shadow:0 0 0 4px rgba(42,23,56,.15)}

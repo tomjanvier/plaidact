@@ -25,11 +25,12 @@ $plaidact_logo = 'https://plaidact.org/wp-content/uploads/2026/01/Capture-decran
 	<?php if ( $show_title && '' !== trim( (string) $title ) ) : ?>
 		<h2 class="pa-timeline-title"><?php echo esc_html( $title ); ?></h2>
 	<?php endif; ?>
-	<?php if ( $show_download ) : ?>
-		<div class="pa-timeline-actions">
+	<div class="pa-timeline-actions">
+		<button type="button" class="pa-timeline-next-event"><?php esc_html_e( 'Événement le plus proche', 'plaidact-breves-feed' ); ?></button>
+		<?php if ( $show_download ) : ?>
 			<a class="pa-timeline-download" href="<?php echo esc_url( add_query_arg( 'plaidact_timeline_ical', $slug, home_url( '/' ) ) ); ?>"><?php esc_html_e( 'Télécharger en iCal (.ics)', 'plaidact-breves-feed' ); ?></a>
-		</div>
-	<?php endif; ?>
+		<?php endif; ?>
+	</div>
 
 	<?php if ( count( $years ) > 1 ) : ?>
 		<nav class="pa-years-nav" aria-label="<?php esc_attr_e( 'Navigation par année', 'plaidact-breves-feed' ); ?>">
@@ -73,7 +74,7 @@ $plaidact_logo = 'https://plaidact.org/wp-content/uploads/2026/01/Capture-decran
 									}
 									$period = ( $event['date_fin'] instanceof DateTimeImmutable && $event['date_fin']->format( 'Ymd' ) !== $event['date_debut']->format( 'Ymd' ) ) ? '→ ' . Plugin::format_date_short( $event['date_fin'] ) : '';
 									?>
-									<li class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>">
+									<li class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>" data-event-ts="<?php echo esc_attr( (string) $event['date_debut']->getTimestamp() ); ?>">
 										<div class="pa-event-date" aria-hidden="true">
 											<?php if ( ! empty( $event['is_continuation'] ) ) : ?>
 												<span class="pa-date-cont">↻</span>
