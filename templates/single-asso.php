@@ -12,7 +12,7 @@ $asso_taxonomy = Plugin::get_asso_taxonomy();
 <main id="site-content" class="plaidact-asso-single-wrap">
 	<?php while ( have_posts() ) : the_post(); ?>
 		<article <?php post_class( 'plaidact-asso-single' ); ?>>
-			<a class="plaidact-asso-back" href="<?php echo esc_url( get_post_type_archive_link( 'associations' ) ?: home_url( '/association/' ) ); ?>">← <?php esc_html_e( 'Retour au répertoire', 'plaidact-breves-feed' ); ?></a>
+			<a class="plaidact-asso-back" href="<?php echo esc_url( 'https://plaidact.org/repertoire/' ); ?>">← <?php esc_html_e( 'Retour au répertoire', 'plaidact-breves-feed' ); ?></a>
 			<header class="plaidact-asso-single__header">
 				<div class="plaidact-asso-single__media">
 					<?php if ( has_post_thumbnail() ) { the_post_thumbnail( 'large' ); } ?>
