@@ -98,7 +98,7 @@ final class PlaidAct_FluentCRM_Directory {
 			return;
 		}
 
-		$lists     = function_exists( 'FluentCrmApi' ) ? FluentCrmApi( 'lists' )->all() : array();
+		$lists     = $this->get_fluentcrm_lists();
 		$config_by = $this->get_lists_config_by_id();
 		?>
 		<div class="wrap">
@@ -131,6 +131,48 @@ final class PlaidAct_FluentCRM_Directory {
 		<?php
 	}
 
+
+	private function get_fluentcrm_lists(): array {
+		if ( ! function_exists( 'FluentCrmApi' ) ) {
+			return array();
+		}
+
+		$api = FluentCrmApi( 'lists' );
+		if ( ! is_object( $api ) || ! method_exists( $api, 'all' ) ) {
+			return array();
+		}
+
+		$lists = $api->all();
+		return is_iterable( $lists ) ? (array) $lists : array();
+	}
+
+	private function get_contacts_for_list( int $list_id ): array {
+		if ( $list_id < 1 || ! function_exists( 'FluentCrmApi' ) ) {
+			return array();
+		}
+
+		$api = FluentCrmApi( 'contacts' );
+		if ( ! is_object( $api ) || ! method_exists( $api, 'whereHas' ) ) {
+			return array();
+		}
+
+		$query = $api->whereHas(
+			'lists',
+			function ( $query_builder ) use ( $list_id ) {
+				if ( is_object( $query_builder ) && method_exists( $query_builder, 'where' ) ) {
+					$query_builder->where( 'id', $list_id );
+				}
+			}
+		);
+
+		if ( ! is_object( $query ) || ! method_exists( $query, 'get' ) ) {
+			return array();
+		}
+
+		$contacts = $query->get();
+		return is_iterable( $contacts ) ? (array) $contacts : array();
+	}
+
 	public function render_shortcode(): string {
 		if ( ! function_exists( 'FluentCrmApi' ) ) {
 			return '<p>' . esc_html__( 'FluentCRM est requis pour afficher l\'annuaire.', 'plaidact-breves-feed' ) . '</p>';
@@ -159,25 +201,37 @@ final class PlaidAct_FluentCRM_Directory {
 	}
 
 	private function render_lists_index(): string {
-		$output = '<div class="plaidact-fcd plaidact-fcd-index"><h3>' . esc_html__( 'Listes publiques', 'plaidact-breves-feed' ) . '</h3><div class="plaidact-fcd-list-grid">';
-		foreach ( $this->get_public_lists_with_details() as $item ) {
+		$items  = $this->get_public_lists_with_details();
+		$output = '<div class="plaidact-fcd plaidact-fcd-index"><div class="plaidact-fcd-directory__lead"><h3>' . esc_html__( 'Listes publiques', 'plaidact-breves-feed' ) . '</h3><p>' . esc_html__( 'Parcourez les répertoires de contacts disponibles publiquement.', 'plaidact-breves-feed' ) . '</p></div>';
+
+		if ( empty( $items ) ) {
+			return $output . '<p class="plaidact-fcd-empty">' . esc_html__( 'Aucune liste publique disponible pour le moment.', 'plaidact-breves-feed' ) . '</p></div>';
+		}
+
+		$output .= '<div class="plaidact-fcd-list-grid">';
+		foreach ( $items as $item ) {
 			$url = add_query_arg( 'list_id', (int) $item['list_id'] );
 			$output .= '<article class="plaidact-fcd-list-card">';
+			$output .= '<a class="plaidact-fcd-list-card__media" href="' . esc_url( $url ) . '">';
 			if ( ! empty( $item['image_url'] ) ) {
 				$output .= '<img class="plaidact-fcd-list-image" src="' . esc_url( (string) $item['image_url'] ) . '" alt="" loading="lazy" />';
+			} else {
+				$output .= '<span class="plaidact-fcd-list-image plaidact-fcd-list-image--placeholder" aria-hidden="true">PLAID·ACT</span>';
 			}
-			$output .= '<h4><a href="' . esc_url( $url ) . '">' . esc_html( (string) $item['title'] ) . '</a></h4>';
+			$output .= '</a><div class="plaidact-fcd-list-card__body"><h4><a href="' . esc_url( $url ) . '">' . esc_html( (string) $item['title'] ) . '</a></h4>';
 			if ( ! empty( $item['description'] ) ) {
 				$output .= '<p>' . esc_html( (string) $item['description'] ) . '</p>';
 			}
-			$output .= '</article>';
+			$output .= '<a class="plaidact-fcd-btn" href="' . esc_url( $url ) . '">' . esc_html__( 'Voir la liste', 'plaidact-breves-feed' ) . '</a>';
+			$output .= '</div></article>';
 		}
 		$output .= '</div></div>';
 		return $output;
 	}
 
+
 	private function render_list_members( int $list_id, string $download_url, bool $can_download ): string {
-		$contacts = FluentCrmApi( 'contacts' )->whereHas( 'lists', function ( $query ) use ( $list_id ) { $query->where( 'id', $list_id ); } )->get();
+		$contacts = $this->get_contacts_for_list( $list_id );
 		ob_start(); ?>
 		<div class="plaidact-fcd plaidact-fcd-table-wrap"><table class="plaidact-fcd-table"><thead><tr><th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Nom', 'plaidact-breves-feed' ); ?></th></tr></thead><tbody><?php foreach ( $contacts as $contact ) : ?><tr><td><?php echo esc_html( isset( $contact->first_name ) ? (string) $contact->first_name : '' ); ?></td><td><?php echo esc_html( isset( $contact->last_name ) ? (string) $contact->last_name : '' ); ?></td></tr><?php endforeach; ?></tbody></table><?php if ( $can_download ) : ?><button type="button" class="plaidact-fcd-download-btn" data-download-url="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger en CSV', 'plaidact-breves-feed' ); ?></button><?php endif; ?></div>
 		<?php if ( $can_download ) : ?><div class="plaidact-fcd-modal" data-fcd-modal hidden><div class="plaidact-fcd-modal-content"><button type="button" class="plaidact-fcd-close" data-fcd-close>&times;</button><h3><?php echo esc_html__( 'Débloquez le téléchargement', 'plaidact-breves-feed' ); ?></h3><form class="plaidact-fcd-form" data-fcd-form><label for="plaidact-fcd-email"><?php echo esc_html__( 'Votre email', 'plaidact-breves-feed' ); ?></label><input type="email" id="plaidact-fcd-email" name="email" required /><button type="submit"><?php echo esc_html__( 'S’inscrire et télécharger', 'plaidact-breves-feed' ); ?></button><p class="plaidact-fcd-message" data-fcd-message></p></form></div></div><?php endif; ?>
@@ -186,7 +240,7 @@ final class PlaidAct_FluentCRM_Directory {
 
 	private function get_public_lists_with_details(): array {
 		$config_by = $this->get_lists_config_by_id();
-		$lists     = FluentCrmApi( 'lists' )->all();
+		$lists     = $this->get_fluentcrm_lists();
 		$public    = array();
 		foreach ( $lists as $list ) {
 			$list_id = isset( $list->id ) ? absint( $list->id ) : 0;
@@ -239,7 +293,7 @@ final class PlaidAct_FluentCRM_Directory {
 
 	private function output_csv( int $list_id ): void {
 		if ( ! function_exists( 'FluentCrmApi' ) ) { wp_die( esc_html__( 'FluentCRM indisponible.', 'plaidact-breves-feed' ) ); }
-		$contacts = FluentCrmApi( 'contacts' )->whereHas( 'lists', function ( $query ) use ( $list_id ) { $query->where( 'id', $list_id ); } )->get();
+		$contacts = $this->get_contacts_for_list( $list_id );
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename=annuaire-liste-' . $list_id . '.csv' );
 		$output = fopen( 'php://output', 'w' ); if ( false === $output ) { wp_die( esc_html__( 'Impossible de générer le CSV.', 'plaidact-breves-feed' ) ); }
