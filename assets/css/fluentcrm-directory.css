@@ -1,13 +1,36 @@
-.plaidact-fcd-list-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:1rem}
-.plaidact-fcd-list-card{border:1px solid #e5e5e5;border-radius:10px;padding:.8rem;background:#fff}
-.plaidact-fcd-list-image{width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:.6rem}
-.plaidact-fcd-list-card h4{margin:.2rem 0 .4rem;font-size:1rem}
-.plaidact-fcd-list-card p{margin:0;color:#444;font-size:.92rem}
-.plaidact-fcd-table {width:100%;border-collapse:collapse;margin:1rem 0}
-.plaidact-fcd-table th,.plaidact-fcd-table td {border:1px solid #d0d0d0;padding:0.5rem;text-align:left}
-.plaidact-fcd-download-btn {padding:0.65rem 1rem;cursor:pointer}
-.plaidact-fcd-modal {position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999}
-.plaidact-fcd-modal-content {position:relative;width:min(480px,90vw);background:#fff;padding:1rem;border-radius:8px}
-.plaidact-fcd-close {position:absolute;right:.75rem;top:.5rem;border:0;background:transparent;font-size:1.5rem;cursor:pointer}
-.plaidact-fcd-form {display:grid;gap:.75rem}
-.plaidact-fcd-message {margin:0;font-size:.9rem}
+:root{
+	--plaid-purple:#2A1738;
+	--plaid-lilac:#efe8f7;
+	--plaid-lilac-2:#d8c8ea;
+	--plaid-muted:#5f4d74;
+}
+
+.plaidact-fcd{margin-top:1rem}
+.plaidact-fcd-directory__lead{background:linear-gradient(130deg,#f7f2fd 0%,#fff 65%);border:1px solid var(--plaid-lilac-2);border-radius:18px;padding:1rem 1.1rem}
+.plaidact-fcd-directory__lead h3{margin:0;color:var(--plaid-purple)}
+.plaidact-fcd-directory__lead p{margin:.35rem 0 0;color:var(--plaid-muted)}
+.plaidact-fcd-list-grid{display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem}
+.plaidact-fcd-list-card{background:#fff;border:1px solid #e8e0f2;border-radius:16px;overflow:hidden;box-shadow:0 10px 26px rgba(42,23,56,.08)}
+.plaidact-fcd-list-image{display:flex;align-items:center;justify-content:center;width:100%;height:180px;object-fit:cover;background:#f2edf8;color:var(--plaid-purple);font-weight:800}
+.plaidact-fcd-list-card__body{padding:.8rem}
+.plaidact-fcd-list-card h4{margin:0 0 .4rem;font-size:1.05rem}
+.plaidact-fcd-list-card h4 a{text-decoration:none;color:var(--plaid-purple)}
+.plaidact-fcd-list-card p{margin:0 0 .65rem;color:#403053;font-size:.92rem}
+.plaidact-fcd-btn{display:inline-flex;align-items:center;gap:.35rem;background:var(--plaid-purple);color:#fff;border-radius:999px;padding:.5rem .9rem;text-decoration:none;font-weight:700}
+.plaidact-fcd-empty{background:var(--plaid-lilac);border-radius:12px;padding:.8rem;color:#3f3352;margin-top:.9rem}
+
+.plaidact-fcd-table{width:100%;border-collapse:collapse;margin:1rem 0}
+.plaidact-fcd-table th,.plaidact-fcd-table td{border:1px solid #d0d0d0;padding:0.5rem;text-align:left}
+.plaidact-fcd-download-btn{padding:0.65rem 1rem;cursor:pointer}
+.plaidact-fcd-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999}
+.plaidact-fcd-modal-content{position:relative;width:min(480px,90vw);background:#fff;padding:1rem;border-radius:8px}
+.plaidact-fcd-close{position:absolute;right:.75rem;top:.5rem;border:0;background:transparent;font-size:1.5rem;cursor:pointer}
+.plaidact-fcd-form{display:grid;gap:.75rem}
+.plaidact-fcd-message{margin:0;font-size:.9rem}
+
+@media (min-width:700px){
+	.plaidact-fcd-list-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:1024px){
+	.plaidact-fcd-list-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
