@@ -104,11 +104,16 @@ final class PlaidAct_FluentCRM_Directory {
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'Annuaire FluentCRM', 'plaidact-breves-feed' ); ?></h1>
 			<p><?php echo esc_html__( 'Choisissez les listes publiques, le téléchargement CSV et les contenus (image/description).', 'plaidact-breves-feed' ); ?></p>
+			<p><?php echo esc_html__( 'Pour rendre une liste publique : cochez "Publique" sur la ligne de la liste puis cliquez sur "Enregistrer les modifications".', 'plaidact-breves-feed' ); ?></p>
+			<p><?php echo esc_html__( 'Le répertoire est affiché via le shortcode [plaidact_fluentcrm_directory].', 'plaidact-breves-feed' ); ?></p>
 			<form method="post" action="options.php">
 				<?php settings_fields( 'plaidact_fcd_settings' ); ?>
 				<table class="widefat striped">
 					<thead><tr><th>Liste</th><th>Publique</th><th>Téléchargeable</th><th>Image</th><th>Description</th></tr></thead>
 					<tbody>
+					<?php if ( empty( $lists ) ) : ?>
+						<tr><td colspan="5"><?php echo esc_html__( 'Aucune liste FluentCRM trouvée. Créez d’abord une liste dans FluentCRM.', 'plaidact-breves-feed' ); ?></td></tr>
+					<?php endif; ?>
 					<?php foreach ( $lists as $index => $list ) : ?>
 						<?php $list_id = isset( $list->id ) ? absint( $list->id ) : 0; if ( $list_id < 1 ) { continue; }
 						$cfg = $config_by[ $list_id ] ?? array(); ?>
