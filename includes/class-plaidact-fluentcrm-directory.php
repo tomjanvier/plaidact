@@ -144,12 +144,40 @@ final class PlaidAct_FluentCRM_Directory {
 		}
 
 		$api = FluentCrmApi( 'lists' );
-		if ( ! is_object( $api ) || ! method_exists( $api, 'all' ) ) {
+		if ( ! is_object( $api ) ) {
 			return array();
 		}
 
-		$lists = $api->all();
-		return is_iterable( $lists ) ? (array) $lists : array();
+		$lists = array();
+		if ( method_exists( $api, 'all' ) ) {
+			$lists = $api->all();
+		} elseif ( method_exists( $api, 'get' ) ) {
+			$lists = $api->get();
+		}
+
+		if ( is_object( $lists ) && method_exists( $lists, 'toArray' ) ) {
+			$lists = $lists->toArray();
+		}
+
+		if ( is_array( $lists ) && isset( $lists['data'] ) && is_array( $lists['data'] ) ) {
+			$lists = $lists['data'];
+		}
+
+		if ( ! is_iterable( $lists ) ) {
+			return array();
+		}
+
+		$normalized = array();
+		foreach ( $lists as $list ) {
+			if ( is_array( $list ) ) {
+				$list = (object) $list;
+			}
+			if ( is_object( $list ) ) {
+				$normalized[] = $list;
+			}
+		}
+
+		return $normalized;
 	}
 
 	private function get_contacts_for_list( int $list_id ): array {
