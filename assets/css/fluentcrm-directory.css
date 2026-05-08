@@ -1,0 +1,55 @@
+.plaidact-fcd-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 1rem 0;
+}
+
+.plaidact-fcd-table th,
+.plaidact-fcd-table td {
+	border: 1px solid #d0d0d0;
+	padding: 0.5rem;
+	text-align: left;
+}
+
+.plaidact-fcd-download-btn {
+	padding: 0.65rem 1rem;
+	cursor: pointer;
+}
+
+.plaidact-fcd-modal {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 9999;
+}
+
+.plaidact-fcd-modal-content {
+	position: relative;
+	width: min(480px, 90vw);
+	background: #fff;
+	padding: 1rem;
+	border-radius: 8px;
+}
+
+.plaidact-fcd-close {
+	position: absolute;
+	right: 0.75rem;
+	top: 0.5rem;
+	border: 0;
+	background: transparent;
+	font-size: 1.5rem;
+	cursor: pointer;
+}
+
+.plaidact-fcd-form {
+	display: grid;
+	gap: 0.75rem;
+}
+
+.plaidact-fcd-message {
+	margin: 0;
+	font-size: 0.9rem;
+}

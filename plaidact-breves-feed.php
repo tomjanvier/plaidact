@@ -21,6 +21,8 @@ define( 'PLAIDACT_BREVES_FEED_URL', plugin_dir_url( __FILE__ ) );
 
 require_once PLAIDACT_BREVES_FEED_PATH . 'includes/class-plaidact-breves-feed.php';
 require_once PLAIDACT_BREVES_FEED_PATH . 'includes/class-plaidact-agenda-suite.php';
+require_once PLAIDACT_BREVES_FEED_PATH . 'includes/class-plaidact-fluentcrm-directory.php';
 
 PlaidAct_Breves_Feed::init();
+PlaidAct_FluentCRM_Directory::init();
 \PlaidAct\AgendaSuite\Plugin::init();
