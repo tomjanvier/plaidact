@@ -29,6 +29,7 @@ final class PlaidAct_FluentCRM_Directory {
 
 	private function __construct() {
 		add_shortcode( self::SHORTCODE, array( $this, 'render_shortcode' ) );
+		add_shortcode( 'plaidact_fluentcrm_directory', array( $this, 'render_shortcode' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
@@ -157,25 +158,41 @@ final class PlaidAct_FluentCRM_Directory {
 		}
 
 		$api = FluentCrmApi( 'contacts' );
-		if ( ! is_object( $api ) || ! method_exists( $api, 'whereHas' ) ) {
+		if ( ! is_object( $api ) ) {
 			return array();
 		}
 
-		$query = $api->whereHas(
-			'lists',
-			function ( $query_builder ) use ( $list_id ) {
-				if ( is_object( $query_builder ) && method_exists( $query_builder, 'where' ) ) {
-					$query_builder->where( 'id', $list_id );
+		$queries = array();
+
+		if ( method_exists( $api, 'filterByListIds' ) ) {
+			$queries[] = $api->filterByListIds( array( $list_id ) );
+		}
+
+		if ( method_exists( $api, 'whereHas' ) ) {
+			$queries[] = $api->whereHas(
+				'lists',
+				function ( $query_builder ) use ( $list_id ) {
+					if ( is_object( $query_builder ) && method_exists( $query_builder, 'where' ) ) {
+						$query_builder->where( 'lists.id', $list_id );
+					}
+				}
+			);
+		}
+
+		foreach ( $queries as $query ) {
+			if ( ! is_object( $query ) || ! method_exists( $query, 'get' ) ) {
+				continue;
+			}
+			$contacts = $query->get();
+			if ( is_iterable( $contacts ) ) {
+				$contacts_array = (array) $contacts;
+				if ( ! empty( $contacts_array ) ) {
+					return $contacts_array;
 				}
 			}
-		);
-
-		if ( ! is_object( $query ) || ! method_exists( $query, 'get' ) ) {
-			return array();
 		}
 
-		$contacts = $query->get();
-		return is_iterable( $contacts ) ? (array) $contacts : array();
+		return array();
 	}
 
 	public function render_shortcode(): string {
