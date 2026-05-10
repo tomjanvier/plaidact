@@ -144,15 +144,19 @@ final class PlaidAct_FluentCRM_Directory {
 		}
 
 		$api = FluentCrmApi( 'lists' );
-		if ( ! is_object( $api ) ) {
-			return array();
+		$lists = array();
+
+		if ( is_object( $api ) ) {
+			if ( method_exists( $api, 'all' ) ) {
+				$lists = $api->all();
+			} elseif ( method_exists( $api, 'get' ) ) {
+				$lists = $api->get();
+			}
 		}
 
-		$lists = array();
-		if ( method_exists( $api, 'all' ) ) {
-			$lists = $api->all();
-		} elseif ( method_exists( $api, 'get' ) ) {
-			$lists = $api->get();
+		// Compatibilité FluentCRM: certains contextes ne renvoient plus les listes via FluentCrmApi('lists').
+		if ( empty( $lists ) && class_exists( '\\FluentCrm\\App\\Models\\Lists' ) ) {
+			$lists = \FluentCrm\App\Models\Lists::query()->orderBy( 'id', 'asc' )->get();
 		}
 
 		if ( is_object( $lists ) && method_exists( $lists, 'toArray' ) ) {
@@ -161,6 +165,10 @@ final class PlaidAct_FluentCRM_Directory {
 
 		if ( is_array( $lists ) && isset( $lists['data'] ) && is_array( $lists['data'] ) ) {
 			$lists = $lists['data'];
+		}
+
+		if ( is_array( $lists ) && isset( $lists['lists'] ) && is_array( $lists['lists'] ) ) {
+			$lists = $lists['lists'];
 		}
 
 		if ( ! is_iterable( $lists ) ) {
