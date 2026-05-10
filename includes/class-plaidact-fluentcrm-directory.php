@@ -36,6 +36,7 @@ final class PlaidAct_FluentCRM_Directory {
 
 	public function register_assets(): void {
 		wp_register_style( 'plaidact-fluentcrm-directory', PLAIDACT_BREVES_FEED_URL . 'assets/css/fluentcrm-directory.css', array(), PLAIDACT_BREVES_FEED_VERSION );
+		wp_register_script( 'plaidact-contact-directory', PLAIDACT_BREVES_FEED_URL . 'assets/js/contact-directory.js', array(), PLAIDACT_BREVES_FEED_VERSION, true );
 	}
 
 	public function register_admin_page(): void {
@@ -180,6 +181,7 @@ final class PlaidAct_FluentCRM_Directory {
 
 	public function render_shortcode(): string {
 		wp_enqueue_style( 'plaidact-fluentcrm-directory' );
+		wp_enqueue_script( 'plaidact-contact-directory' );
 		$lists = $this->get_lists();
 		if ( empty( $lists ) ) {
 			return '<p class="plaidact-fcd-empty">' . esc_html__( 'Aucune liste de contacts disponible.', 'plaidact-breves-feed' ) . '</p>';
@@ -210,7 +212,7 @@ final class PlaidAct_FluentCRM_Directory {
 					<a class="plaidact-fcd-list-card" href="<?php echo esc_url( add_query_arg( 'list_id', (int) $list['id'] ) ); ?>"><div class="plaidact-fcd-list-card__body"><h4><?php echo esc_html( $list['name'] ); ?></h4><p><?php echo esc_html( $list['description'] ); ?></p></div></a>
 				<?php endforeach; ?>
 			</div>
-			<input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher dans les contacts…', 'plaidact-breves-feed' ); ?>" oninput="const v=this.value.toLowerCase();this.closest('.plaidact-fcd').querySelectorAll('tbody tr').forEach((r)=>{r.style.display=r.innerText.toLowerCase().includes(v)?'':'none';});" />
+			<input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher dans les contacts…', 'plaidact-breves-feed' ); ?>" />
 			<table class="plaidact-fcd-table">
 				<thead><tr><th><?php echo esc_html__( 'Nom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html( $current['column_label'] ); ?></th><th><?php echo esc_html__( 'Email', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Notes', 'plaidact-breves-feed' ); ?></th></tr></thead>
 				<tbody>
