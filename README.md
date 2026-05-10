@@ -106,3 +106,10 @@ Colonnes principales :
   - `?show_title=0`
   - `?show_download=0`
 
+
+
+### Répertoire de contacts (listes CSV)
+- Shortcode : `[plaidact_contact_directory]` (alias compatible: `[plaidact_fluentcrm_directory]`).
+- Gestion dans **Réglages > Répertoire contacts** : création de listes + libellé personnalisé de colonne (ex: Fonction, Groupe politique).
+- Import CSV par liste avec colonnes : `Nom`, `Prénom`, `Fonction` (ou `Groupe politique`), `Email`, `Notes`.
+- Recherche en direct dans les contacts et téléchargement CSV par liste côté front.

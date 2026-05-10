@@ -1,6 +1,6 @@
 <?php
 /**
- * FluentCRM public directory shortcode.
+ * Public contacts directory (no FluentCRM dependency).
  *
  * @package PlaidAct_Breves_Feed
  */
@@ -10,12 +10,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class PlaidAct_FluentCRM_Directory {
-	private const SHORTCODE = 'fluentcrm_directory';
-	private const NONCE_ACTION_SUBSCRIBE = 'plaidact_fluentcrm_subscribe';
-	private const NONCE_ACTION_DOWNLOAD  = 'plaidact_fluentcrm_download';
-	private const DOWNLOAD_ACTION        = 'plaidact_fluentcrm_download_csv';
-	private const OPTION_PUBLIC_LISTS    = 'plaidact_fcd_public_lists';
-	private const PROSPECT_LIST_ID       = 0;
+	private const SHORTCODE             = 'plaidact_contact_directory';
+	private const LEGACY_SHORTCODE      = 'plaidact_fluentcrm_directory';
+	private const OPTION_CONTACT_LISTS  = 'plaidact_contact_directory_lists';
+	private const NONCE_IMPORT          = 'plaidact_contact_directory_import';
+	private const NONCE_DOWNLOAD_PREFIX = 'plaidact_contact_directory_download_';
+	private const DOWNLOAD_ACTION       = 'plaidact_contact_directory_download';
 
 	private static ?PlaidAct_FluentCRM_Directory $instance = null;
 
@@ -23,75 +23,30 @@ final class PlaidAct_FluentCRM_Directory {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
 		}
-
 		return self::$instance;
 	}
 
 	private function __construct() {
 		add_shortcode( self::SHORTCODE, array( $this, 'render_shortcode' ) );
-		add_shortcode( 'plaidact_fluentcrm_directory', array( $this, 'render_shortcode' ) );
+		add_shortcode( self::LEGACY_SHORTCODE, array( $this, 'render_shortcode' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_page' ) );
-		add_action( 'admin_init', array( $this, 'register_settings' ) );
-		add_action( 'wp_ajax_plaidact_fluentcrm_subscribe', array( $this, 'handle_subscribe' ) );
-		add_action( 'wp_ajax_nopriv_plaidact_fluentcrm_subscribe', array( $this, 'handle_subscribe' ) );
 		add_action( 'admin_post_' . self::DOWNLOAD_ACTION, array( $this, 'handle_csv_download' ) );
-		add_action( 'admin_post_nopriv_' . self::DOWNLOAD_ACTION, array( $this, 'handle_csv_download' ) );
 	}
 
 	public function register_assets(): void {
 		wp_register_style( 'plaidact-fluentcrm-directory', PLAIDACT_BREVES_FEED_URL . 'assets/css/fluentcrm-directory.css', array(), PLAIDACT_BREVES_FEED_VERSION );
-		wp_register_script( 'plaidact-fluentcrm-directory', PLAIDACT_BREVES_FEED_URL . 'assets/js/fluentcrm-directory.js', array(), PLAIDACT_BREVES_FEED_VERSION, true );
 	}
 
 	public function register_admin_page(): void {
 		add_submenu_page(
 			'options-general.php',
-			esc_html__( 'Listes publiques annuaire', 'plaidact-breves-feed' ),
-			esc_html__( 'Annuaire FluentCRM', 'plaidact-breves-feed' ),
+			esc_html__( 'Répertoire contacts', 'plaidact-breves-feed' ),
+			esc_html__( 'Répertoire contacts', 'plaidact-breves-feed' ),
 			'manage_options',
-			'plaidact-fcd-settings',
+			'plaidact-contact-directory',
 			array( $this, 'render_admin_page' )
 		);
-	}
-
-	public function register_settings(): void {
-		register_setting(
-			'plaidact_fcd_settings',
-			self::OPTION_PUBLIC_LISTS,
-			array(
-				'type'              => 'array',
-				'sanitize_callback' => array( $this, 'sanitize_public_lists' ),
-				'default'           => array(),
-			)
-		);
-	}
-
-	public function sanitize_public_lists( $value ): array {
-		if ( ! is_array( $value ) ) {
-			return array();
-		}
-
-		$sanitized = array();
-		foreach ( $value as $item ) {
-			if ( ! is_array( $item ) ) {
-				continue;
-			}
-			$list_id = isset( $item['list_id'] ) ? absint( $item['list_id'] ) : 0;
-			if ( $list_id < 1 ) {
-				continue;
-			}
-
-			$sanitized[] = array(
-				'list_id'      => $list_id,
-				'is_public'    => ! empty( $item['is_public'] ),
-				'allow_export' => ! empty( $item['allow_export'] ),
-				'description'  => isset( $item['description'] ) ? sanitize_textarea_field( (string) $item['description'] ) : '',
-				'image_url'    => isset( $item['image_url'] ) ? esc_url_raw( (string) $item['image_url'] ) : '',
-			);
-		}
-
-		return $sanitized;
 	}
 
 	public function render_admin_page(): void {
@@ -99,264 +54,206 @@ final class PlaidAct_FluentCRM_Directory {
 			return;
 		}
 
-		$lists     = $this->get_fluentcrm_lists();
-		$config_by = $this->get_lists_config_by_id();
+		$this->handle_admin_postbacks();
+		$lists = $this->get_lists();
 		?>
 		<div class="wrap">
-			<h1><?php echo esc_html__( 'Annuaire FluentCRM', 'plaidact-breves-feed' ); ?></h1>
-			<p><?php echo esc_html__( 'Choisissez les listes publiques, le téléchargement CSV et les contenus (image/description).', 'plaidact-breves-feed' ); ?></p>
-			<p><?php echo esc_html__( 'Pour rendre une liste publique : cochez "Publique" sur la ligne de la liste puis cliquez sur "Enregistrer les modifications".', 'plaidact-breves-feed' ); ?></p>
-			<p><?php echo esc_html__( 'Le répertoire est affiché via le shortcode [plaidact_fluentcrm_directory].', 'plaidact-breves-feed' ); ?></p>
-			<form method="post" action="options.php">
-				<?php settings_fields( 'plaidact_fcd_settings' ); ?>
-				<table class="widefat striped">
-					<thead><tr><th>Liste</th><th>Publique</th><th>Téléchargeable</th><th>Image</th><th>Description</th></tr></thead>
-					<tbody>
-					<?php if ( empty( $lists ) ) : ?>
-						<tr><td colspan="5"><?php echo esc_html__( 'Aucune liste FluentCRM trouvée. Créez d’abord une liste dans FluentCRM.', 'plaidact-breves-feed' ); ?></td></tr>
-					<?php endif; ?>
-					<?php foreach ( $lists as $index => $list ) : ?>
-						<?php $list_id = isset( $list->id ) ? absint( $list->id ) : 0; if ( $list_id < 1 ) { continue; }
-						$cfg = $config_by[ $list_id ] ?? array(); ?>
-						<tr>
-							<td>
-								<strong><?php echo esc_html( (string) ( $list->title ?? ( 'Liste #' . $list_id ) ) ); ?></strong>
-								<input type="hidden" name="<?php echo esc_attr( self::OPTION_PUBLIC_LISTS ); ?>[<?php echo esc_attr( (string) $index ); ?>][list_id]" value="<?php echo esc_attr( (string) $list_id ); ?>" />
-							</td>
-							<td><input type="checkbox" name="<?php echo esc_attr( self::OPTION_PUBLIC_LISTS ); ?>[<?php echo esc_attr( (string) $index ); ?>][is_public]" value="1" <?php checked( ! empty( $cfg['is_public'] ) ); ?> /></td>
-							<td><input type="checkbox" name="<?php echo esc_attr( self::OPTION_PUBLIC_LISTS ); ?>[<?php echo esc_attr( (string) $index ); ?>][allow_export]" value="1" <?php checked( ! empty( $cfg['allow_export'] ) ); ?> /></td>
-							<td><input type="url" class="regular-text" name="<?php echo esc_attr( self::OPTION_PUBLIC_LISTS ); ?>[<?php echo esc_attr( (string) $index ); ?>][image_url]" value="<?php echo esc_attr( isset( $cfg['image_url'] ) ? (string) $cfg['image_url'] : '' ); ?>" placeholder="https://..." /></td>
-							<td><textarea class="large-text" rows="2" name="<?php echo esc_attr( self::OPTION_PUBLIC_LISTS ); ?>[<?php echo esc_attr( (string) $index ); ?>][description]"><?php echo esc_textarea( isset( $cfg['description'] ) ? (string) $cfg['description'] : '' ); ?></textarea></td>
-						</tr>
-					<?php endforeach; ?>
-					</tbody>
-				</table>
-				<?php submit_button(); ?>
+			<h1><?php echo esc_html__( 'Répertoire de contacts', 'plaidact-breves-feed' ); ?></h1>
+			<p><?php echo esc_html__( 'Créez des listes, importez vos CSV et affichez-les sur le site avec le shortcode [plaidact_contact_directory].', 'plaidact-breves-feed' ); ?></p>
+
+			<h2><?php echo esc_html__( 'Nouvelle liste', 'plaidact-breves-feed' ); ?></h2>
+			<form method="post">
+				<?php wp_nonce_field( self::NONCE_IMPORT ); ?>
+				<input type="hidden" name="plaidact_contact_action" value="create_list" />
+				<table class="form-table"><tbody>
+					<tr><th scope="row"><?php echo esc_html__( 'Nom de la liste', 'plaidact-breves-feed' ); ?></th><td><input type="text" class="regular-text" name="list_name" required /></td></tr>
+					<tr><th scope="row"><?php echo esc_html__( 'Libellé colonne personnalisée', 'plaidact-breves-feed' ); ?></th><td><input type="text" class="regular-text" name="column_label" placeholder="Fonction ou Groupe politique" required /></td></tr>
+					<tr><th scope="row"><?php echo esc_html__( 'Description', 'plaidact-breves-feed' ); ?></th><td><textarea class="large-text" rows="2" name="description"></textarea></td></tr>
+				</tbody></table>
+				<?php submit_button( __( 'Créer la liste', 'plaidact-breves-feed' ) ); ?>
 			</form>
+
+			<h2><?php echo esc_html__( 'Listes existantes', 'plaidact-breves-feed' ); ?></h2>
+			<?php if ( empty( $lists ) ) : ?>
+				<p><?php echo esc_html__( 'Aucune liste pour le moment.', 'plaidact-breves-feed' ); ?></p>
+			<?php else : ?>
+				<?php foreach ( $lists as $list ) : ?>
+					<div style="background:#fff;border:1px solid #ddd;padding:16px;margin-bottom:14px;">
+						<h3><?php echo esc_html( $list['name'] ); ?></h3>
+						<p><strong><?php echo esc_html__( 'Colonne personnalisée :', 'plaidact-breves-feed' ); ?></strong> <?php echo esc_html( $list['column_label'] ); ?></p>
+						<p><?php echo esc_html( $list['description'] ); ?></p>
+						<p><strong><?php echo esc_html__( 'Contacts :', 'plaidact-breves-feed' ); ?></strong> <?php echo esc_html( (string) count( $list['contacts'] ) ); ?></p>
+						<form method="post" enctype="multipart/form-data" style="margin-top:8px;">
+							<?php wp_nonce_field( self::NONCE_IMPORT ); ?>
+							<input type="hidden" name="plaidact_contact_action" value="import_csv" />
+							<input type="hidden" name="list_id" value="<?php echo esc_attr( (string) $list['id'] ); ?>" />
+							<input type="file" name="contacts_csv" accept=".csv,text/csv" required />
+							<button type="submit" class="button button-secondary"><?php echo esc_html__( 'Importer CSV', 'plaidact-breves-feed' ); ?></button>
+						</form>
+					</div>
+				<?php endforeach; ?>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
 
-
-	private function get_fluentcrm_lists(): array {
-		if ( ! function_exists( 'FluentCrmApi' ) ) {
-			return array();
+	private function handle_admin_postbacks(): void {
+		if ( 'POST' !== $_SERVER['REQUEST_METHOD'] || ! isset( $_POST['plaidact_contact_action'] ) ) {
+			return;
 		}
-
-		$api = FluentCrmApi( 'lists' );
-		$lists = array();
-
-		if ( is_object( $api ) ) {
-			if ( method_exists( $api, 'all' ) ) {
-				$lists = $api->all();
-			} elseif ( method_exists( $api, 'get' ) ) {
-				$lists = $api->get();
-			}
+		check_admin_referer( self::NONCE_IMPORT );
+		$action = sanitize_key( wp_unslash( $_POST['plaidact_contact_action'] ) );
+		if ( 'create_list' === $action ) {
+			$this->create_list_from_request();
 		}
-
-		// Compatibilité FluentCRM: certains contextes ne renvoient plus les listes via FluentCrmApi('lists').
-		if ( empty( $lists ) && class_exists( '\\FluentCrm\\App\\Models\\Lists' ) ) {
-			$lists = \FluentCrm\App\Models\Lists::query()->orderBy( 'id', 'asc' )->get();
+		if ( 'import_csv' === $action ) {
+			$this->import_csv_from_request();
 		}
-
-		if ( is_object( $lists ) && method_exists( $lists, 'toArray' ) ) {
-			$lists = $lists->toArray();
-		}
-
-		if ( is_array( $lists ) && isset( $lists['data'] ) && is_array( $lists['data'] ) ) {
-			$lists = $lists['data'];
-		}
-
-		if ( is_array( $lists ) && isset( $lists['lists'] ) && is_array( $lists['lists'] ) ) {
-			$lists = $lists['lists'];
-		}
-
-		if ( ! is_iterable( $lists ) ) {
-			return array();
-		}
-
-		$normalized = array();
-		foreach ( $lists as $list ) {
-			if ( is_array( $list ) ) {
-				$list = (object) $list;
-			}
-			if ( is_object( $list ) ) {
-				$normalized[] = $list;
-			}
-		}
-
-		return $normalized;
 	}
 
-	private function get_contacts_for_list( int $list_id ): array {
-		if ( $list_id < 1 || ! function_exists( 'FluentCrmApi' ) ) {
-			return array();
+	private function create_list_from_request(): void {
+		$name         = isset( $_POST['list_name'] ) ? sanitize_text_field( wp_unslash( $_POST['list_name'] ) ) : '';
+		$column_label = isset( $_POST['column_label'] ) ? sanitize_text_field( wp_unslash( $_POST['column_label'] ) ) : '';
+		$description  = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
+		if ( '' === $name || '' === $column_label ) {
+			return;
 		}
+		$lists   = $this->get_lists();
+		$lists[] = array(
+			'id'           => time() + wp_rand( 1, 9999 ),
+			'name'         => $name,
+			'column_label' => $column_label,
+			'description'  => $description,
+			'contacts'     => array(),
+		);
+		update_option( self::OPTION_CONTACT_LISTS, $lists, false );
+	}
 
-		$api = FluentCrmApi( 'contacts' );
-		if ( ! is_object( $api ) ) {
-			return array();
+	private function import_csv_from_request(): void {
+		$list_id = isset( $_POST['list_id'] ) ? absint( wp_unslash( $_POST['list_id'] ) ) : 0;
+		if ( $list_id < 1 || empty( $_FILES['contacts_csv']['tmp_name'] ) ) {
+			return;
 		}
-
-		$queries = array();
-
-		if ( method_exists( $api, 'filterByListIds' ) ) {
-			$queries[] = $api->filterByListIds( array( $list_id ) );
+		$rows = $this->parse_csv_contacts( $_FILES['contacts_csv']['tmp_name'] );
+		if ( empty( $rows ) ) {
+			return;
 		}
-
-		if ( method_exists( $api, 'whereHas' ) ) {
-			$queries[] = $api->whereHas(
-				'lists',
-				function ( $query_builder ) use ( $list_id ) {
-					if ( is_object( $query_builder ) && method_exists( $query_builder, 'where' ) ) {
-						$query_builder->where( 'lists.id', $list_id );
-					}
-				}
-			);
-		}
-
-		foreach ( $queries as $query ) {
-			if ( ! is_object( $query ) || ! method_exists( $query, 'get' ) ) {
+		$lists = $this->get_lists();
+		foreach ( $lists as &$list ) {
+			if ( $list_id !== (int) $list['id'] ) {
 				continue;
 			}
-			$contacts = $query->get();
-			if ( is_iterable( $contacts ) ) {
-				$contacts_array = (array) $contacts;
-				if ( ! empty( $contacts_array ) ) {
-					return $contacts_array;
-				}
-			}
+			$list['contacts'] = $rows;
+			break;
 		}
+		unset( $list );
+		update_option( self::OPTION_CONTACT_LISTS, $lists, false );
+	}
 
-		return array();
+	private function parse_csv_contacts( string $tmp_path ): array {
+		$handle = fopen( $tmp_path, 'r' );
+		if ( false === $handle ) {
+			return array();
+		}
+		$rows    = array();
+		$headers = fgetcsv( $handle );
+		if ( ! is_array( $headers ) ) {
+			fclose( $handle );
+			return array();
+		}
+		while ( ( $line = fgetcsv( $handle ) ) !== false ) {
+			$data = array_combine( $headers, $line );
+			if ( ! is_array( $data ) ) {
+				continue;
+			}
+			$rows[] = array(
+				'nom'         => sanitize_text_field( (string) ( $data['Nom'] ?? '' ) ),
+				'prenom'      => sanitize_text_field( (string) ( $data['Prénom'] ?? $data['Prenom'] ?? '' ) ),
+				'custom'      => sanitize_text_field( (string) ( $data['Fonction'] ?? $data['Groupe politique'] ?? '' ) ),
+				'email'       => sanitize_email( (string) ( $data['Email'] ?? '' ) ),
+				'notes'       => sanitize_textarea_field( (string) ( $data['Notes'] ?? '' ) ),
+			);
+		}
+		fclose( $handle );
+		return $rows;
 	}
 
 	public function render_shortcode(): string {
-		if ( ! function_exists( 'FluentCrmApi' ) ) {
-			return '<p>' . esc_html__( 'FluentCRM est requis pour afficher l\'annuaire.', 'plaidact-breves-feed' ) . '</p>';
-		}
-
-		$list_id = isset( $_GET['list_id'] ) ? absint( wp_unslash( $_GET['list_id'] ) ) : 0;
 		wp_enqueue_style( 'plaidact-fluentcrm-directory' );
-		if ( $list_id < 1 ) {
-			return $this->render_lists_index();
+		$lists = $this->get_lists();
+		if ( empty( $lists ) ) {
+			return '<p class="plaidact-fcd-empty">' . esc_html__( 'Aucune liste de contacts disponible.', 'plaidact-breves-feed' ) . '</p>';
+		}
+		$current_list_id = isset( $_GET['list_id'] ) ? absint( wp_unslash( $_GET['list_id'] ) ) : (int) $lists[0]['id'];
+		$current         = $this->get_list_by_id( $current_list_id );
+		if ( null === $current ) {
+			$current = $lists[0];
 		}
 
-		$config = $this->get_public_list_config( $list_id );
-		if ( null === $config ) {
-			return '<p>' . esc_html__( 'Cette liste n’est pas publique.', 'plaidact-breves-feed' ) . '</p>';
-		}
+		$download_url = add_query_arg(
+			array(
+				'action'  => self::DOWNLOAD_ACTION,
+				'list_id' => (int) $current['id'],
+				'nonce'   => wp_create_nonce( self::NONCE_DOWNLOAD_PREFIX . $current['id'] ),
+			),
+			admin_url( 'admin-post.php' )
+		);
 
-		wp_enqueue_script( 'plaidact-fluentcrm-directory' );
-		$download_url = '';
-		if ( ! empty( $config['allow_export'] ) ) {
-			$download_url = add_query_arg( array( 'action' => self::DOWNLOAD_ACTION, 'list_id' => $list_id, 'nonce' => wp_create_nonce( self::NONCE_ACTION_DOWNLOAD . '_' . $list_id ) ), admin_url( 'admin-post.php' ) );
-		}
-
-		wp_localize_script( 'plaidact-fluentcrm-directory', 'PlaidactFluentcrmDirectory', array( 'ajaxUrl' => admin_url( 'admin-ajax.php' ), 'subscribeNonce' => wp_create_nonce( self::NONCE_ACTION_SUBSCRIBE ), 'downloadUrl' => esc_url_raw( $download_url ) ) );
-
-		return $this->render_list_members( $list_id, $download_url, ! empty( $config['allow_export'] ) );
-	}
-
-	private function render_lists_index(): string {
-		$items  = $this->get_public_lists_with_details();
-		$output = '<div class="plaidact-fcd plaidact-fcd-index"><div class="plaidact-fcd-directory__lead"><h3>' . esc_html__( 'Listes publiques', 'plaidact-breves-feed' ) . '</h3><p>' . esc_html__( 'Parcourez les répertoires de contacts disponibles publiquement.', 'plaidact-breves-feed' ) . '</p></div>';
-
-		if ( empty( $items ) ) {
-			return $output . '<p class="plaidact-fcd-empty">' . esc_html__( 'Aucune liste publique disponible pour le moment.', 'plaidact-breves-feed' ) . '</p></div>';
-		}
-
-		$output .= '<div class="plaidact-fcd-list-grid">';
-		foreach ( $items as $item ) {
-			$url = add_query_arg( 'list_id', (int) $item['list_id'] );
-			$output .= '<article class="plaidact-fcd-list-card">';
-			$output .= '<a class="plaidact-fcd-list-card__media" href="' . esc_url( $url ) . '">';
-			if ( ! empty( $item['image_url'] ) ) {
-				$output .= '<img class="plaidact-fcd-list-image" src="' . esc_url( (string) $item['image_url'] ) . '" alt="" loading="lazy" />';
-			} else {
-				$output .= '<span class="plaidact-fcd-list-image plaidact-fcd-list-image--placeholder" aria-hidden="true">PLAID·ACT</span>';
-			}
-			$output .= '</a><div class="plaidact-fcd-list-card__body"><h4><a href="' . esc_url( $url ) . '">' . esc_html( (string) $item['title'] ) . '</a></h4>';
-			if ( ! empty( $item['description'] ) ) {
-				$output .= '<p>' . esc_html( (string) $item['description'] ) . '</p>';
-			}
-			$output .= '<a class="plaidact-fcd-btn" href="' . esc_url( $url ) . '">' . esc_html__( 'Voir la liste', 'plaidact-breves-feed' ) . '</a>';
-			$output .= '</div></article>';
-		}
-		$output .= '</div></div>';
-		return $output;
-	}
-
-
-	private function render_list_members( int $list_id, string $download_url, bool $can_download ): string {
-		$contacts = $this->get_contacts_for_list( $list_id );
 		ob_start(); ?>
-		<div class="plaidact-fcd plaidact-fcd-table-wrap"><table class="plaidact-fcd-table"><thead><tr><th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Nom', 'plaidact-breves-feed' ); ?></th></tr></thead><tbody><?php foreach ( $contacts as $contact ) : ?><tr><td><?php echo esc_html( isset( $contact->first_name ) ? (string) $contact->first_name : '' ); ?></td><td><?php echo esc_html( isset( $contact->last_name ) ? (string) $contact->last_name : '' ); ?></td></tr><?php endforeach; ?></tbody></table><?php if ( $can_download ) : ?><button type="button" class="plaidact-fcd-download-btn" data-download-url="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger en CSV', 'plaidact-breves-feed' ); ?></button><?php endif; ?></div>
-		<?php if ( $can_download ) : ?><div class="plaidact-fcd-modal" data-fcd-modal hidden><div class="plaidact-fcd-modal-content"><button type="button" class="plaidact-fcd-close" data-fcd-close>&times;</button><h3><?php echo esc_html__( 'Débloquez le téléchargement', 'plaidact-breves-feed' ); ?></h3><form class="plaidact-fcd-form" data-fcd-form><label for="plaidact-fcd-email"><?php echo esc_html__( 'Votre email', 'plaidact-breves-feed' ); ?></label><input type="email" id="plaidact-fcd-email" name="email" required /><button type="submit"><?php echo esc_html__( 'S’inscrire et télécharger', 'plaidact-breves-feed' ); ?></button><p class="plaidact-fcd-message" data-fcd-message></p></form></div></div><?php endif; ?>
-		<?php return (string) ob_get_clean();
-	}
-
-	private function get_public_lists_with_details(): array {
-		$config_by = $this->get_lists_config_by_id();
-		$lists     = $this->get_fluentcrm_lists();
-		$public    = array();
-		foreach ( $lists as $list ) {
-			$list_id = isset( $list->id ) ? absint( $list->id ) : 0;
-			if ( $list_id < 1 || empty( $config_by[ $list_id ]['is_public'] ) ) { continue; }
-			$public[] = array_merge( $config_by[ $list_id ], array( 'list_id' => $list_id, 'title' => (string) ( $list->title ?? ( 'Liste #' . $list_id ) ) ) );
-		}
-		return $public;
-	}
-
-	private function get_public_list_config( int $list_id ): ?array {
-		$config_by = $this->get_lists_config_by_id();
-		if ( empty( $config_by[ $list_id ]['is_public'] ) ) {
-			return null;
-		}
-		return $config_by[ $list_id ];
-	}
-
-	private function get_lists_config_by_id(): array {
-		$items = get_option( self::OPTION_PUBLIC_LISTS, array() );
-		if ( ! is_array( $items ) ) { return array(); }
-		$map = array();
-		foreach ( $items as $item ) {
-			if ( ! is_array( $item ) || empty( $item['list_id'] ) ) { continue; }
-			$map[ absint( $item['list_id'] ) ] = $item;
-		}
-		return $map;
-	}
-
-	public function handle_subscribe(): void { /* unchanged */
-		check_ajax_referer( self::NONCE_ACTION_SUBSCRIBE, 'nonce' );
-		if ( ! function_exists( 'FluentCrmApi' ) ) { wp_send_json_error( array( 'message' => 'FluentCRM indisponible.' ), 500 ); }
-		$email = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
-		if ( ! is_email( $email ) ) { wp_send_json_error( array( 'message' => 'Email invalide.' ), 400 ); }
-		$contact = FluentCrmApi( 'contacts' )->createOrUpdate( array( 'email' => $email, 'status' => 'subscribed' ) );
-		if ( self::PROSPECT_LIST_ID > 0 && isset( $contact->id ) ) { FluentCrmApi( 'contacts' )->attachLists( $contact->id, array( self::PROSPECT_LIST_ID ) ); }
-		wp_send_json_success( array( 'message' => 'Inscription validée.' ) );
+		<div class="plaidact-fcd">
+			<div class="plaidact-fcd-directory__lead">
+				<h3><?php echo esc_html__( 'Répertoire de contacts', 'plaidact-breves-feed' ); ?></h3>
+				<p><?php echo esc_html__( 'Choisissez une liste, recherchez un contact et exportez le tableau en CSV.', 'plaidact-breves-feed' ); ?></p>
+			</div>
+			<div class="plaidact-fcd-list-grid">
+				<?php foreach ( $lists as $list ) : ?>
+					<a class="plaidact-fcd-list-card" href="<?php echo esc_url( add_query_arg( 'list_id', (int) $list['id'] ) ); ?>"><div class="plaidact-fcd-list-card__body"><h4><?php echo esc_html( $list['name'] ); ?></h4><p><?php echo esc_html( $list['description'] ); ?></p></div></a>
+				<?php endforeach; ?>
+			</div>
+			<input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher dans les contacts…', 'plaidact-breves-feed' ); ?>" oninput="const v=this.value.toLowerCase();this.closest('.plaidact-fcd').querySelectorAll('tbody tr').forEach((r)=>{r.style.display=r.innerText.toLowerCase().includes(v)?'':'none';});" />
+			<table class="plaidact-fcd-table">
+				<thead><tr><th><?php echo esc_html__( 'Nom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html( $current['column_label'] ); ?></th><th><?php echo esc_html__( 'Email', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Notes', 'plaidact-breves-feed' ); ?></th></tr></thead>
+				<tbody>
+				<?php foreach ( $current['contacts'] as $contact ) : ?>
+					<tr><td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $contact['custom'] ); ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><td><?php echo esc_html( $contact['notes'] ); ?></td></tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table>
+			<a class="plaidact-fcd-btn" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger la liste CSV', 'plaidact-breves-feed' ); ?></a>
+		</div>
+		<?php
+		return (string) ob_get_clean();
 	}
 
 	public function handle_csv_download(): void {
 		$list_id = isset( $_GET['list_id'] ) ? absint( wp_unslash( $_GET['list_id'] ) ) : 0;
 		$nonce   = isset( $_GET['nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['nonce'] ) ) : '';
-		if ( null === $this->get_public_list_config( $list_id ) || empty( $this->get_public_list_config( $list_id )['allow_export'] ) ) {
-			wp_die( esc_html__( 'Téléchargement non autorisé pour cette liste.', 'plaidact-breves-feed' ) );
-		}
-		if ( $list_id < 1 || ! wp_verify_nonce( $nonce, self::NONCE_ACTION_DOWNLOAD . '_' . $list_id ) ) {
+		$list    = $this->get_list_by_id( $list_id );
+		if ( null === $list || ! wp_verify_nonce( $nonce, self::NONCE_DOWNLOAD_PREFIX . $list_id ) ) {
 			wp_die( esc_html__( 'Lien de téléchargement invalide.', 'plaidact-breves-feed' ) );
 		}
-		$this->output_csv( $list_id );
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=contacts-' . $list_id . '.csv' );
+		$output = fopen( 'php://output', 'w' );
+		fputcsv( $output, array( 'Nom', 'Prénom', $list['column_label'], 'Email', 'Notes' ) );
+		foreach ( $list['contacts'] as $contact ) {
+			fputcsv( $output, array( $contact['nom'], $contact['prenom'], $contact['custom'], $contact['email'], $contact['notes'] ) );
+		}
+		fclose( $output );
+		exit;
 	}
 
-	private function output_csv( int $list_id ): void {
-		if ( ! function_exists( 'FluentCrmApi' ) ) { wp_die( esc_html__( 'FluentCRM indisponible.', 'plaidact-breves-feed' ) ); }
-		$contacts = $this->get_contacts_for_list( $list_id );
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename=annuaire-liste-' . $list_id . '.csv' );
-		$output = fopen( 'php://output', 'w' ); if ( false === $output ) { wp_die( esc_html__( 'Impossible de générer le CSV.', 'plaidact-breves-feed' ) ); }
-		fputcsv( $output, array( 'Prénom', 'Nom' ) );
-		foreach ( $contacts as $contact ) { fputcsv( $output, array( isset( $contact->first_name ) ? (string) $contact->first_name : '', isset( $contact->last_name ) ? (string) $contact->last_name : '' ) ); }
-		fclose( $output ); exit;
+	private function get_lists(): array {
+		$lists = get_option( self::OPTION_CONTACT_LISTS, array() );
+		return is_array( $lists ) ? $lists : array();
+	}
+
+	private function get_list_by_id( int $list_id ): ?array {
+		foreach ( $this->get_lists() as $list ) {
+			if ( $list_id === (int) $list['id'] ) {
+				return $list;
+			}
+		}
+		return null;
 	}
 }
