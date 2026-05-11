@@ -17,6 +17,7 @@
 .plaidact-fcd-list-card h4 a{text-decoration:none;color:var(--plaid-purple)}
 .plaidact-fcd-list-card p{margin:0 0 .65rem;color:#403053;font-size:.92rem}
 .plaidact-fcd-btn{display:inline-flex;align-items:center;gap:.35rem;background:var(--plaid-purple);color:#fff;border-radius:999px;padding:.5rem .9rem;text-decoration:none;font-weight:700}
+.plaidact-fcd-btn--download{margin-top:1rem}
 .plaidact-fcd-empty{background:var(--plaid-lilac);border-radius:12px;padding:.8rem;color:#3f3352;margin-top:.9rem}
 
 .plaidact-fcd-table{width:100%;border-collapse:collapse;margin:1rem 0}
@@ -37,3 +38,6 @@
 
 .plaidact-fcd-search{width:100%;max-width:520px;margin:1rem 0;padding:.6rem .8rem;border:1px solid #cdb9e0;border-radius:10px}
 .plaidact-fcd-table thead th{background:#f5eefc;color:#2A1738}
+.plaidact-fcd-list-card small{color:#5f4d74;font-weight:600}
+.plaidact-fcd-table th:first-child,
+.plaidact-fcd-table td:first-child{display:table-cell!important;min-width:130px;font-weight:700;color:#2A1738}

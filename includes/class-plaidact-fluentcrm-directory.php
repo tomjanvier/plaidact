@@ -70,6 +70,7 @@ final class PlaidAct_FluentCRM_Directory {
 					<tr><th scope="row"><?php echo esc_html__( 'Nom de la liste', 'plaidact-breves-feed' ); ?></th><td><input type="text" class="regular-text" name="list_name" required /></td></tr>
 					<tr><th scope="row"><?php echo esc_html__( 'Libellé colonne personnalisée', 'plaidact-breves-feed' ); ?></th><td><input type="text" class="regular-text" name="column_label" placeholder="Fonction ou Groupe politique" required /></td></tr>
 					<tr><th scope="row"><?php echo esc_html__( 'Description', 'plaidact-breves-feed' ); ?></th><td><textarea class="large-text" rows="2" name="description"></textarea></td></tr>
+					<tr><th scope="row"><?php echo esc_html__( 'Image (URL)', 'plaidact-breves-feed' ); ?></th><td><input type="url" class="regular-text" name="image_url" placeholder="https://..." /></td></tr>
 				</tbody></table>
 				<?php submit_button( __( 'Créer la liste', 'plaidact-breves-feed' ) ); ?>
 			</form>
@@ -84,6 +85,7 @@ final class PlaidAct_FluentCRM_Directory {
 						<p><strong><?php echo esc_html__( 'Colonne personnalisée :', 'plaidact-breves-feed' ); ?></strong> <?php echo esc_html( $list['column_label'] ); ?></p>
 						<p><?php echo esc_html( $list['description'] ); ?></p>
 						<p><strong><?php echo esc_html__( 'Contacts :', 'plaidact-breves-feed' ); ?></strong> <?php echo esc_html( (string) count( $list['contacts'] ) ); ?></p>
+						<p><strong><?php echo esc_html__( 'Dernière mise à jour :', 'plaidact-breves-feed' ); ?></strong> <?php echo esc_html( ! empty( $list['updated_at'] ) ? wp_date( 'd/m/Y H:i', (int) $list['updated_at'] ) : '—' ); ?></p>
 						<form method="post" enctype="multipart/form-data" style="margin-top:8px;">
 							<?php wp_nonce_field( self::NONCE_IMPORT ); ?>
 							<input type="hidden" name="plaidact_contact_action" value="import_csv" />
@@ -116,6 +118,7 @@ final class PlaidAct_FluentCRM_Directory {
 		$name         = isset( $_POST['list_name'] ) ? sanitize_text_field( wp_unslash( $_POST['list_name'] ) ) : '';
 		$column_label = isset( $_POST['column_label'] ) ? sanitize_text_field( wp_unslash( $_POST['column_label'] ) ) : '';
 		$description  = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
+		$image_url    = isset( $_POST['image_url'] ) ? esc_url_raw( wp_unslash( $_POST['image_url'] ) ) : '';
 		if ( '' === $name || '' === $column_label ) {
 			return;
 		}
@@ -125,6 +128,8 @@ final class PlaidAct_FluentCRM_Directory {
 			'name'         => $name,
 			'column_label' => $column_label,
 			'description'  => $description,
+			'image_url'    => $image_url,
+			'updated_at'   => time(),
 			'contacts'     => array(),
 		);
 		update_option( self::OPTION_CONTACT_LISTS, $lists, false );
@@ -144,7 +149,8 @@ final class PlaidAct_FluentCRM_Directory {
 			if ( $list_id !== (int) $list['id'] ) {
 				continue;
 			}
-			$list['contacts'] = $rows;
+			$list['contacts']   = $rows;
+			$list['updated_at'] = time();
 			break;
 		}
 		unset( $list );
@@ -162,6 +168,11 @@ final class PlaidAct_FluentCRM_Directory {
 			fclose( $handle );
 			return array();
 		}
+		$headers = array_map( static function( $header ) {
+			$header = is_string( $header ) ? trim( $header ) : '';
+			$header = preg_replace( '/^\xEF\xBB\xBF/u', '', $header );
+			return $header;
+		}, $headers );
 		while ( ( $line = fgetcsv( $handle ) ) !== false ) {
 			$data = array_combine( $headers, $line );
 			if ( ! is_array( $data ) ) {
@@ -207,9 +218,16 @@ final class PlaidAct_FluentCRM_Directory {
 				<h3><?php echo esc_html__( 'Répertoire de contacts', 'plaidact-breves-feed' ); ?></h3>
 				<p><?php echo esc_html__( 'Choisissez une liste, recherchez un contact et exportez le tableau en CSV.', 'plaidact-breves-feed' ); ?></p>
 			</div>
+			<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger la liste CSV', 'plaidact-breves-feed' ); ?></a>
 			<div class="plaidact-fcd-list-grid">
 				<?php foreach ( $lists as $list ) : ?>
-					<a class="plaidact-fcd-list-card" href="<?php echo esc_url( add_query_arg( 'list_id', (int) $list['id'] ) ); ?>"><div class="plaidact-fcd-list-card__body"><h4><?php echo esc_html( $list['name'] ); ?></h4><p><?php echo esc_html( $list['description'] ); ?></p></div></a>
+					<a class="plaidact-fcd-list-card" href="<?php echo esc_url( add_query_arg( 'list_id', (int) $list['id'] ) ); ?>">
+						<?php if ( ! empty( $list['image_url'] ) ) : ?>
+							<img class="plaidact-fcd-list-image" src="<?php echo esc_url( $list['image_url'] ); ?>" alt="" />
+						<?php else : ?>
+							<div class="plaidact-fcd-list-image"><?php echo esc_html( mb_substr( (string) $list['name'], 0, 1 ) ); ?></div>
+						<?php endif; ?>
+						<div class="plaidact-fcd-list-card__body"><h4><?php echo esc_html( $list['name'] ); ?></h4><p><?php echo esc_html( $list['description'] ); ?></p><small><?php echo esc_html__( 'Mise à jour :', 'plaidact-breves-feed' ); ?> <?php echo esc_html( ! empty( $list['updated_at'] ) ? wp_date( 'd/m/Y', (int) $list['updated_at'] ) : '—' ); ?></small></div></a>
 				<?php endforeach; ?>
 			</div>
 			<input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher dans les contacts…', 'plaidact-breves-feed' ); ?>" />
@@ -221,7 +239,7 @@ final class PlaidAct_FluentCRM_Directory {
 				<?php endforeach; ?>
 				</tbody>
 			</table>
-			<a class="plaidact-fcd-btn" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger la liste CSV', 'plaidact-breves-feed' ); ?></a>
+
 		</div>
 		<?php
 		return (string) ob_get_clean();
