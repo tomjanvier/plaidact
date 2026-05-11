@@ -86,6 +86,14 @@ final class PlaidAct_FluentCRM_Directory {
 						<p><?php echo esc_html( $list['description'] ); ?></p>
 						<p><strong><?php echo esc_html__( 'Contacts :', 'plaidact-breves-feed' ); ?></strong> <?php echo esc_html( (string) count( $list['contacts'] ) ); ?></p>
 						<p><strong><?php echo esc_html__( 'Dernière mise à jour :', 'plaidact-breves-feed' ); ?></strong> <?php echo esc_html( ! empty( $list['updated_at'] ) ? wp_date( 'd/m/Y H:i', (int) $list['updated_at'] ) : '—' ); ?></p>
+						<p><a class="button button-secondary" href="<?php echo esc_url( add_query_arg( array( 'action' => self::DOWNLOAD_ACTION, 'list_id' => (int) $list['id'], 'nonce' => wp_create_nonce( self::NONCE_DOWNLOAD_PREFIX . $list['id'] ) ), admin_url( 'admin-post.php' ) ) ); ?>"><?php echo esc_html__( 'Télécharger cette liste (CSV)', 'plaidact-breves-feed' ); ?></a></p>
+						<form method="post" style="margin-top:8px;">
+							<?php wp_nonce_field( self::NONCE_IMPORT ); ?>
+							<input type="hidden" name="plaidact_contact_action" value="update_list_meta" />
+							<input type="hidden" name="list_id" value="<?php echo esc_attr( (string) $list['id'] ); ?>" />
+							<p><label><strong><?php echo esc_html__( 'Image (URL)', 'plaidact-breves-feed' ); ?></strong><br /><input type="url" class="regular-text" name="image_url" value="<?php echo esc_attr( (string) ( $list['image_url'] ?? '' ) ); ?>" placeholder="https://..." /></label></p>
+							<?php submit_button( __( 'Mettre à jour la liste', 'plaidact-breves-feed' ), 'secondary', 'submit', false ); ?>
+						</form>
 						<form method="post" enctype="multipart/form-data" style="margin-top:8px;">
 							<?php wp_nonce_field( self::NONCE_IMPORT ); ?>
 							<input type="hidden" name="plaidact_contact_action" value="import_csv" />
@@ -112,6 +120,9 @@ final class PlaidAct_FluentCRM_Directory {
 		if ( 'import_csv' === $action ) {
 			$this->import_csv_from_request();
 		}
+		if ( 'update_list_meta' === $action ) {
+			$this->update_list_meta_from_request();
+		}
 	}
 
 	private function create_list_from_request(): void {
@@ -132,6 +143,26 @@ final class PlaidAct_FluentCRM_Directory {
 			'updated_at'   => time(),
 			'contacts'     => array(),
 		);
+		update_option( self::OPTION_CONTACT_LISTS, $lists, false );
+	}
+
+
+	private function update_list_meta_from_request(): void {
+		$list_id   = isset( $_POST['list_id'] ) ? absint( wp_unslash( $_POST['list_id'] ) ) : 0;
+		$image_url = isset( $_POST['image_url'] ) ? esc_url_raw( wp_unslash( $_POST['image_url'] ) ) : '';
+		if ( $list_id < 1 ) {
+			return;
+		}
+		$lists = $this->get_lists();
+		foreach ( $lists as &$list ) {
+			if ( $list_id !== (int) $list['id'] ) {
+				continue;
+			}
+			$list['image_url']  = $image_url;
+			$list['updated_at'] = time();
+			break;
+		}
+		unset( $list );
 		update_option( self::OPTION_CONTACT_LISTS, $lists, false );
 	}
 
@@ -179,15 +210,39 @@ final class PlaidAct_FluentCRM_Directory {
 				continue;
 			}
 			$rows[] = array(
-				'nom'         => sanitize_text_field( (string) ( $data['Nom'] ?? '' ) ),
-				'prenom'      => sanitize_text_field( (string) ( $data['Prénom'] ?? $data['Prenom'] ?? '' ) ),
-				'custom'      => sanitize_text_field( (string) ( $data['Fonction'] ?? $data['Groupe politique'] ?? '' ) ),
-				'email'       => sanitize_email( (string) ( $data['Email'] ?? '' ) ),
-				'notes'       => sanitize_textarea_field( (string) ( $data['Notes'] ?? '' ) ),
+				'nom'          => sanitize_text_field( (string) ( $data['Nom'] ?? $data['nom'] ?? ( $line[0] ?? '' ) ) ),
+				'prenom'       => sanitize_text_field( (string) ( $data['Prénom'] ?? $data['Prenom'] ?? $data['prenom'] ?? '' ) ),
+				'custom'       => sanitize_text_field( (string) ( $data['Fonction'] ?? $data['Groupe politique'] ?? '' ) ),
+				'institution'  => sanitize_text_field( (string) ( $data['Institution'] ?? '' ) ),
+				'groupe'       => sanitize_text_field( (string) ( $data['Groupe politique'] ?? '' ) ),
+				'commission'   => sanitize_text_field( (string) ( $data['Commission'] ?? '' ) ),
+				'social_links' => $this->parse_social_links( $data ),
+				'email'        => sanitize_email( (string) ( $data['Email'] ?? '' ) ),
+				'notes'        => sanitize_textarea_field( (string) ( $data['Notes'] ?? '' ) ),
 			);
 		}
 		fclose( $handle );
 		return $rows;
+	}
+
+
+	private function parse_social_links( array $data ): array {
+		$platforms = array(
+			'x'         => $data['X'] ?? $data['Twitter'] ?? '',
+			'linkedin'  => $data['LinkedIn'] ?? '',
+			'facebook'  => $data['Facebook'] ?? '',
+			'instagram' => $data['Instagram'] ?? '',
+			'youtube'   => $data['YouTube'] ?? '',
+		);
+		$links = array();
+		foreach ( $platforms as $key => $value ) {
+			$value = is_string( $value ) ? trim( $value ) : '';
+			if ( '' === $value ) {
+				continue;
+			}
+			$links[ $key ] = esc_url_raw( $value );
+		}
+		return $links;
 	}
 
 	public function render_shortcode(): string {
@@ -230,12 +285,18 @@ final class PlaidAct_FluentCRM_Directory {
 						<div class="plaidact-fcd-list-card__body"><h4><?php echo esc_html( $list['name'] ); ?></h4><p><?php echo esc_html( $list['description'] ); ?></p><small><?php echo esc_html__( 'Mise à jour :', 'plaidact-breves-feed' ); ?> <?php echo esc_html( ! empty( $list['updated_at'] ) ? wp_date( 'd/m/Y', (int) $list['updated_at'] ) : '—' ); ?></small></div></a>
 				<?php endforeach; ?>
 			</div>
-			<input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher dans les contacts…', 'plaidact-breves-feed' ); ?>" />
+			<div class="plaidact-fcd-filters">
+				<input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher dans les contacts…', 'plaidact-breves-feed' ); ?>" />
+				<input type="search" class="plaidact-fcd-filter-custom" placeholder="<?php echo esc_attr__( 'Filtrer par fonction…', 'plaidact-breves-feed' ); ?>" />
+				<input type="search" class="plaidact-fcd-filter-institution" placeholder="<?php echo esc_attr__( 'Filtrer par institution…', 'plaidact-breves-feed' ); ?>" />
+				<input type="search" class="plaidact-fcd-filter-groupe" placeholder="<?php echo esc_attr__( 'Filtrer par groupe politique…', 'plaidact-breves-feed' ); ?>" />
+				<input type="search" class="plaidact-fcd-filter-commission" placeholder="<?php echo esc_attr__( 'Filtrer par commission…', 'plaidact-breves-feed' ); ?>" />
+			</div>
 			<table class="plaidact-fcd-table">
-				<thead><tr><th><?php echo esc_html__( 'Nom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html( $current['column_label'] ); ?></th><th><?php echo esc_html__( 'Email', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Notes', 'plaidact-breves-feed' ); ?></th></tr></thead>
+				<thead><tr><th><?php echo esc_html__( 'Nom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html( $current['column_label'] ); ?></th><th><?php echo esc_html__( 'Institution', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Email', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Notes', 'plaidact-breves-feed' ); ?></th></tr></thead>
 				<tbody>
 				<?php foreach ( $current['contacts'] as $contact ) : ?>
-					<tr><td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $contact['custom'] ); ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><td><?php echo esc_html( $contact['notes'] ); ?></td></tr>
+					<tr data-custom="<?php echo esc_attr( strtolower( (string) ( $contact['custom'] ?? '' ) ) ); ?>" data-institution="<?php echo esc_attr( strtolower( (string) ( $contact['institution'] ?? '' ) ) ); ?>" data-groupe="<?php echo esc_attr( strtolower( (string) ( $contact['groupe'] ?? '' ) ) ); ?>" data-commission="<?php echo esc_attr( strtolower( (string) ( $contact['commission'] ?? '' ) ) ); ?>"><td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $contact['custom'] ); ?></td><td><span class="plaidact-fcd-badge"><?php echo esc_html( $contact['institution'] ?? '' ); ?></span></td><td><?php echo esc_html( $contact['groupe'] ?? '' ); ?></td><td><span class="plaidact-fcd-badge plaidact-fcd-badge--commission"><?php echo esc_html( $contact['commission'] ?? '' ); ?></span></td><td><?php echo $this->render_social_links( $contact['social_links'] ?? array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><td><?php echo esc_html( $contact['notes'] ); ?></td></tr>
 				<?php endforeach; ?>
 				</tbody>
 			</table>
@@ -243,6 +304,21 @@ final class PlaidAct_FluentCRM_Directory {
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	private function render_social_links( array $links ): string {
+		if ( empty( $links ) ) {
+			return '—';
+		}
+		$html = '<div class="plaidact-fcd-social">';
+		foreach ( $links as $platform => $url ) {
+			if ( '' === $url ) {
+				continue;
+			}
+			$html .= '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( ucfirst( $platform ) ) . '</a>';
+		}
+		$html .= '</div>';
+		return $html;
 	}
 
 	public function handle_csv_download(): void {
@@ -255,9 +331,9 @@ final class PlaidAct_FluentCRM_Directory {
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename=contacts-' . $list_id . '.csv' );
 		$output = fopen( 'php://output', 'w' );
-		fputcsv( $output, array( 'Nom', 'Prénom', $list['column_label'], 'Email', 'Notes' ) );
+		fputcsv( $output, array( 'Nom', 'Prénom', $list['column_label'], 'Institution', 'Groupe politique', 'Commission', 'Email', 'Notes' ) );
 		foreach ( $list['contacts'] as $contact ) {
-			fputcsv( $output, array( $contact['nom'], $contact['prenom'], $contact['custom'], $contact['email'], $contact['notes'] ) );
+			fputcsv( $output, array( $contact['nom'], $contact['prenom'], $contact['custom'], $contact['institution'] ?? '', $contact['groupe'] ?? '', $contact['commission'] ?? '', $contact['email'], $contact['notes'] ) );
 		}
 		fclose( $output );
 		exit;

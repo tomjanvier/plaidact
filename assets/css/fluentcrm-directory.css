@@ -41,3 +41,9 @@
 .plaidact-fcd-list-card small{color:#5f4d74;font-weight:600}
 .plaidact-fcd-table th:first-child,
 .plaidact-fcd-table td:first-child{display:table-cell!important;min-width:130px;font-weight:700;color:#2A1738}
+.plaidact-fcd-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;margin:1rem 0}
+.plaidact-fcd-filter-custom,.plaidact-fcd-filter-institution,.plaidact-fcd-filter-groupe,.plaidact-fcd-filter-commission{padding:.6rem .8rem;border:1px solid #cdb9e0;border-radius:10px}
+.plaidact-fcd-badge{display:inline-block;background:#ece3f8;color:#2A1738;font-weight:700;padding:.2rem .55rem;border-radius:999px}
+.plaidact-fcd-badge--commission{background:#fbe7d3;color:#6b3a00}
+.plaidact-fcd-social{display:flex;flex-wrap:wrap;gap:.35rem}
+.plaidact-fcd-social a{background:#f2edf8;color:#2A1738;padding:.15rem .45rem;border-radius:6px;text-decoration:none;font-size:.8rem}
