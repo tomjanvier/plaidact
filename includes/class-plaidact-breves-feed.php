@@ -33,6 +33,8 @@ final class PlaidAct_Breves_Feed {
 		add_action( 'admin_menu', array( $this, 'register_export_page' ) );
 		add_action( 'admin_menu', array( $this, 'register_import_page' ) );
 		add_action( 'admin_post_plaidact_import_breves', array( $this, 'handle_import' ) );
+		add_action( 'save_post_breves', array( $this, 'bump_breves_cache_version' ) );
+		add_action( 'deleted_post', array( $this, 'maybe_bump_cache_for_deleted_breve' ) );
 	}
 
 	public function load_textdomain(): void {
@@ -159,6 +161,11 @@ final class PlaidAct_Breves_Feed {
 	}
 
 	public function render_latest_dropdown_shortcode( array $atts = array() ): string {
+		$cache_key = 'plaidact_breves_dropdown_' . md5( wp_json_encode( $atts ) . '|' . $this->get_breves_cache_version() );
+		$cached    = get_transient( $cache_key );
+		if ( is_string( $cached ) ) {
+			return $cached;
+		}
 		$atts = shortcode_atts(
 			array(
 				'limit' => '20',
@@ -208,7 +215,9 @@ final class PlaidAct_Breves_Feed {
 		</div>
 		<?php
 		wp_reset_postdata();
-		return (string) ob_get_clean();
+		$output = (string) ob_get_clean();
+		set_transient( $cache_key, $output, HOUR_IN_SECONDS );
+		return $output;
 	}
 
 	public function render_feed( array $args = array() ): string {
@@ -324,8 +333,15 @@ final class PlaidAct_Breves_Feed {
 	}
 
 	public function load_template( string $template_name, array $args = array() ): void {
-		$theme_path = locate_template( 'plaidact-breves/' . $template_name );
-		$template   = $theme_path ? $theme_path : PLAIDACT_BREVES_FEED_PATH . 'templates/' . $template_name;
+		static $resolved_templates = array();
+
+		if ( isset( $resolved_templates[ $template_name ] ) ) {
+			$template = $resolved_templates[ $template_name ];
+		} else {
+			$theme_path = locate_template( 'plaidact-breves/' . $template_name );
+			$template   = $theme_path ? $theme_path : PLAIDACT_BREVES_FEED_PATH . 'templates/' . $template_name;
+			$resolved_templates[ $template_name ] = $template;
+		}
 
 		if ( ! file_exists( $template ) ) {
 			return;
@@ -575,6 +591,29 @@ final class PlaidAct_Breves_Feed {
 			)
 		);
 		exit;
+	}
+
+
+	public function bump_breves_cache_version(): void {
+		update_option( 'plaidact_breves_cache_version', (string) microtime( true ), false );
+	}
+
+	public function maybe_bump_cache_for_deleted_breve( int $post_id ): void {
+		if ( 'breves' !== get_post_type( $post_id ) ) {
+			return;
+		}
+
+		$this->bump_breves_cache_version();
+	}
+
+	private function get_breves_cache_version(): string {
+		$version = get_option( 'plaidact_breves_cache_version', '' );
+		if ( ! is_string( $version ) || '' === $version ) {
+			$version = (string) microtime( true );
+			update_option( 'plaidact_breves_cache_version', $version, false );
+		}
+
+		return $version;
 	}
 
 	private function get_current_page( string $query_var = 'paged' ): int {
