@@ -67,3 +67,9 @@
 .plaidact-fcd-filter-block{padding:.6rem;border:1px solid #e6d9f4;border-radius:12px;background:#fcf9ff}
 .plaidact-fcd-filter-title{margin:0 0 .5rem;font-size:.85rem;color:#5d3b83;text-transform:uppercase;letter-spacing:.03em}
 .plaidact-fcd-filter-buttons .plaidact-fcd-filter-btn.is-active{outline:2px solid #7c3aed;outline-offset:1px}
+
+.plaidact-fcd-current-list strong{color:#7c3aed;font-size:1.05rem}
+.plaidact-fcd-filter-row th{background:#fff}
+.plaidact-fcd-select-filter{width:100%;padding:.45rem;border:1px solid #d4c2e7;border-radius:8px;background:#fff}
+.plaidact-fcd-column-controls{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin-top:.75rem;padding:.65rem .8rem;border:1px solid #e6d9f4;border-radius:12px;background:#fcf9ff}
+.plaidact-fcd-column-controls label{font-size:.9rem;color:#452567}

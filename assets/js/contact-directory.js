@@ -1,46 +1,49 @@
 (function () {
 	function filterRows(root) {
 		var search = (root.querySelector('.plaidact-fcd-search')?.value || '').toLowerCase();
-		var activeCustom = root.querySelector('.plaidact-fcd-filter-buttons[data-filter="custom"] .plaidact-fcd-filter-btn.is-active')?.dataset.value || '';
-		var activeCommission = root.querySelector('.plaidact-fcd-filter-buttons[data-filter="commission"] .plaidact-fcd-filter-btn.is-active')?.dataset.value || '';
-		var activeGroupe = root.querySelector('.plaidact-fcd-filter-buttons[data-filter="groupe"] .plaidact-fcd-filter-btn.is-active')?.dataset.value || '';
+		var custom = root.querySelector('.plaidact-fcd-select-filter[data-filter="custom"]')?.value || '';
+		var commission = root.querySelector('.plaidact-fcd-select-filter[data-filter="commission"]')?.value || '';
+		var groupe = root.querySelector('.plaidact-fcd-select-filter[data-filter="groupe"]')?.value || '';
 
 		root.querySelectorAll('tbody tr').forEach(function (row) {
 			var matchesSearch = row.innerText.toLowerCase().includes(search);
-			var matchesCustom = !activeCustom || (row.dataset.custom || '').includes(activeCustom);
-			var matchesCommission = !activeCommission || (row.dataset.commission || '').includes(activeCommission);
-			var matchesGroupe = !activeGroupe || (row.dataset.groupe || '').includes(activeGroupe);
+			var matchesCustom = !custom || (row.dataset.custom || '') === custom;
+			var matchesCommission = !commission || (row.dataset.commission || '') === commission;
+			var matchesGroupe = !groupe || (row.dataset.groupe || '') === groupe;
 			row.style.display = matchesSearch && matchesCustom && matchesCommission && matchesGroupe ? '' : 'none';
 		});
 	}
 
+	function toggleColumns(root) {
+		var indexByColumn = { groupe: 4, commission: 5, custom: 6, social: 7 };
+		Object.keys(indexByColumn).forEach(function (column) {
+			var checked = root.querySelector('.plaidact-fcd-column-toggle[data-column="' + column + '"]')?.checked;
+			var visible = checked !== false;
+			root.querySelectorAll('table tr').forEach(function (row) {
+				if (row.children[indexByColumn[column]]) {
+					row.children[indexByColumn[column]].style.display = visible ? '' : 'none';
+				}
+			});
+		});
+	}
+
 	document.addEventListener('input', function (event) {
-		if (!event.target.closest('.plaidact-fcd-filters')) {
-			return;
-		}
 		var root = event.target.closest('.plaidact-fcd');
-		if (root) {
-			filterRows(root);
-		}
+		if (!root) return;
+		if (event.target.matches('.plaidact-fcd-search, .plaidact-fcd-select-filter')) filterRows(root);
 	});
 
-	document.addEventListener('click', function (event) {
-		var button = event.target.closest('.plaidact-fcd-filter-btn');
-		if (!button) {
-			return;
-		}
-		var group = button.closest('.plaidact-fcd-filter-buttons');
-		if (!group) {
-			return;
-		}
-		group.querySelectorAll('.plaidact-fcd-filter-btn').forEach(function (btn) {
-			btn.classList.remove('is-active');
-		});
-		button.classList.add('is-active');
+	document.addEventListener('change', function (event) {
+		var root = event.target.closest('.plaidact-fcd');
+		if (!root) return;
+		if (event.target.matches('.plaidact-fcd-column-toggle')) toggleColumns(root);
+		if (event.target.matches('.plaidact-fcd-select-filter')) filterRows(root);
+	});
 
-		var root = button.closest('.plaidact-fcd');
-		if (root) {
+	document.addEventListener('DOMContentLoaded', function () {
+		document.querySelectorAll('.plaidact-fcd').forEach(function (root) {
 			filterRows(root);
-		}
+			toggleColumns(root);
+		});
 	});
 })();

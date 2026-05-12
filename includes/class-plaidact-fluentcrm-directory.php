@@ -296,7 +296,6 @@ final class PlaidAct_FluentCRM_Directory {
 			</div>
 			<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger la liste CSV', 'plaidact-breves-feed' ); ?></a>
 			<div class="plaidact-fcd-current-list">
-				<span class="plaidact-fcd-current-list__label"><?php echo esc_html__( 'Liste sélectionnée', 'plaidact-breves-feed' ); ?></span>
 				<strong><?php echo esc_html( $current['name'] ); ?></strong>
 			</div>
 			<div class="plaidact-fcd-list-grid" role="tablist" aria-label="<?php echo esc_attr__( 'Listes de contacts', 'plaidact-breves-feed' ); ?>">
@@ -311,47 +310,44 @@ final class PlaidAct_FluentCRM_Directory {
 						<div class="plaidact-fcd-list-card__body"><h4><?php echo esc_html( $list['name'] ); ?></h4><p><?php echo esc_html( $list['description'] ); ?></p><small><?php echo esc_html__( 'Mise à jour :', 'plaidact-breves-feed' ); ?> <?php echo esc_html( ! empty( $list['updated_at'] ) ? wp_date( 'd/m/Y', (int) $list['updated_at'] ) : '—' ); ?></small></div></a>
 				<?php endforeach; ?>
 			</div>
-			<div class="plaidact-fcd-filters">
-				<input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher dans les contacts…', 'plaidact-breves-feed' ); ?>" />
-				<div class="plaidact-fcd-filter-block" aria-label="<?php echo esc_attr__( 'Fonction', 'plaidact-breves-feed' ); ?>">
-					<h4 class="plaidact-fcd-filter-title"><?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></h4>
-					<div class="plaidact-fcd-filter-buttons" data-filter="custom">
-						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></button>
-						<?php foreach ( $custom_values as $value ) : ?>
-							<button type="button" class="plaidact-fcd-filter-btn" data-value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></button>
-						<?php endforeach; ?>
-					</div>
-				</div>
-				<div class="plaidact-fcd-filter-block" aria-label="<?php echo esc_attr__( 'Commission', 'plaidact-breves-feed' ); ?>">
-					<h4 class="plaidact-fcd-filter-title"><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></h4>
-					<div class="plaidact-fcd-filter-buttons" data-filter="commission">
-						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></button>
-						<?php foreach ( $commission_values as $value ) : ?>
-							<button type="button" class="plaidact-fcd-filter-btn" data-value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></button>
-						<?php endforeach; ?>
-					</div>
-				</div>
-				<div class="plaidact-fcd-filter-block" aria-label="<?php echo esc_attr__( 'Groupe politique', 'plaidact-breves-feed' ); ?>">
-					<h4 class="plaidact-fcd-filter-title"><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></h4>
-					<div class="plaidact-fcd-filter-buttons" data-filter="groupe">
-						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Tous', 'plaidact-breves-feed' ); ?></button>
-						<?php foreach ( $groupe_values as $value ) : ?>
-							<button type="button" class="plaidact-fcd-filter-btn" data-value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></button>
-						<?php endforeach; ?>
-					</div>
-				</div>
-			</div>
 			<div class="plaidact-fcd-table-wrap">
 			<table class="plaidact-fcd-table">
-				<thead><tr><th><?php echo esc_html__( 'Nom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html( $current['column_label'] ); ?></th><th><?php echo esc_html__( 'Informations', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Email', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Notes', 'plaidact-breves-feed' ); ?></th></tr></thead>
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Nom', 'plaidact-breves-feed' ); ?></th>
+						<th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th>
+						<th><?php echo esc_html__( 'Liste', 'plaidact-breves-feed' ); ?></th>
+						<th><?php echo esc_html__( 'Email', 'plaidact-breves-feed' ); ?></th>
+						<th class="plaidact-fcd-col-toggle" data-column="groupe"><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></th>
+						<th class="plaidact-fcd-col-toggle" data-column="commission"><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></th>
+						<th class="plaidact-fcd-col-toggle" data-column="custom"><?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></th>
+						<th class="plaidact-fcd-col-toggle" data-column="social"><?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></th>
+					</tr>
+					<tr class="plaidact-fcd-filter-row">
+						<th><input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher…', 'plaidact-breves-feed' ); ?>" /></th>
+						<th></th><th></th><th></th>
+						<th><select class="plaidact-fcd-select-filter" data-filter="groupe"><option value=""><?php echo esc_html__( 'Tous', 'plaidact-breves-feed' ); ?></option><?php foreach ( $groupe_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th>
+						<th><select class="plaidact-fcd-select-filter" data-filter="commission"><option value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></option><?php foreach ( $commission_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th>
+						<th><select class="plaidact-fcd-select-filter" data-filter="custom"><option value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></option><?php foreach ( $custom_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th>
+						<th></th>
+					</tr>
+				</thead>
 				<tbody>
 				<?php foreach ( $current['contacts'] as $contact ) : ?>
-					<?php $meta_filter = strtolower( (string) ( ( $contact['institution'] ?? '' ) . ' ' . ( $contact['groupe'] ?? '' ) . ' ' . ( $contact['commission'] ?? '' ) ) ); ?>
-					<tr data-custom="<?php echo esc_attr( strtolower( (string) ( $contact['custom'] ?? '' ) ) ); ?>" data-institution="<?php echo esc_attr( strtolower( (string) ( $contact['institution'] ?? '' ) ) ); ?>" data-groupe="<?php echo esc_attr( strtolower( (string) ( $contact['groupe'] ?? '' ) ) ); ?>" data-commission="<?php echo esc_attr( strtolower( (string) ( $contact['commission'] ?? '' ) ) ); ?>" data-meta="<?php echo esc_attr( $meta_filter ); ?>"><td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $contact['custom'] ); ?></td><td><div class="plaidact-fcd-tags"><span class="plaidact-fcd-tag plaidact-fcd-tag--institution"><?php echo esc_html( $contact['institution'] ?? '' ); ?></span><span class="plaidact-fcd-tag plaidact-fcd-tag--groupe"><?php echo esc_html( $contact['groupe'] ?? '' ); ?></span><span class="plaidact-fcd-tag plaidact-fcd-tag--commission"><?php echo esc_html( $contact['commission'] ?? '' ); ?></span></div></td><td><?php echo $this->render_social_links( $contact['social_links'] ?? array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><td><?php echo esc_html( $contact['notes'] ); ?></td></tr>
+					<tr data-custom="<?php echo esc_attr( strtolower( (string) ( $contact['custom'] ?? '' ) ) ); ?>" data-groupe="<?php echo esc_attr( strtolower( (string) ( $contact['groupe'] ?? '' ) ) ); ?>" data-commission="<?php echo esc_attr( strtolower( (string) ( $contact['commission'] ?? '' ) ) ); ?>">
+						<td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $current['name'] ); ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><td><?php echo esc_html( $contact['groupe'] ?? '' ); ?></td><td><?php echo esc_html( $contact['commission'] ?? '' ); ?></td><td><?php echo esc_html( $contact['custom'] ); ?></td><td><?php echo $this->render_social_links( $contact['social_links'] ?? array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td>
+					</tr>
 				<?php endforeach; ?>
 				</tbody>
 			</table>
 			</div>
+			<div class="plaidact-fcd-column-controls">
+				<span><?php echo esc_html__( 'Colonnes à afficher :', 'plaidact-breves-feed' ); ?></span>
+				<label><input type="checkbox" class="plaidact-fcd-column-toggle" data-column="groupe" checked /> <?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></label>
+				<label><input type="checkbox" class="plaidact-fcd-column-toggle" data-column="commission" checked /> <?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></label>
+				<label><input type="checkbox" class="plaidact-fcd-column-toggle" data-column="custom" checked /> <?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></label>
+				<label><input type="checkbox" class="plaidact-fcd-column-toggle" data-column="social" checked /> <?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></label>
+			</div>			</div>
 
 		</div>
 		<?php
