@@ -40,13 +40,14 @@ final class PlaidAct_FluentCRM_Directory {
 	}
 
 	public function register_admin_page(): void {
-		add_submenu_page(
-			'options-general.php',
+		add_menu_page(
 			esc_html__( 'Répertoire contacts', 'plaidact-breves-feed' ),
 			esc_html__( 'Répertoire contacts', 'plaidact-breves-feed' ),
 			'manage_options',
 			'plaidact-contact-directory',
-			array( $this, 'render_admin_page' )
+			array( $this, 'render_admin_page' ),
+			'dashicons-id-alt',
+			58
 		);
 	}
 
@@ -91,6 +92,9 @@ final class PlaidAct_FluentCRM_Directory {
 							<?php wp_nonce_field( self::NONCE_IMPORT ); ?>
 							<input type="hidden" name="plaidact_contact_action" value="update_list_meta" />
 							<input type="hidden" name="list_id" value="<?php echo esc_attr( (string) $list['id'] ); ?>" />
+							<p><label><strong><?php echo esc_html__( 'Nom de la liste', 'plaidact-breves-feed' ); ?></strong><br /><input type="text" class="regular-text" name="list_name" value="<?php echo esc_attr( (string) $list['name'] ); ?>" required /></label></p>
+							<p><label><strong><?php echo esc_html__( 'Libellé colonne personnalisée', 'plaidact-breves-feed' ); ?></strong><br /><input type="text" class="regular-text" name="column_label" value="<?php echo esc_attr( (string) $list['column_label'] ); ?>" required /></label></p>
+							<p><label><strong><?php echo esc_html__( 'Description', 'plaidact-breves-feed' ); ?></strong><br /><textarea class="large-text" rows="2" name="description"><?php echo esc_textarea( (string) ( $list['description'] ?? '' ) ); ?></textarea></label></p>
 							<p><label><strong><?php echo esc_html__( 'Image (URL)', 'plaidact-breves-feed' ); ?></strong><br /><input type="url" class="regular-text" name="image_url" value="<?php echo esc_attr( (string) ( $list['image_url'] ?? '' ) ); ?>" placeholder="https://..." /></label></p>
 							<?php submit_button( __( 'Mettre à jour la liste', 'plaidact-breves-feed' ), 'secondary', 'submit', false ); ?>
 						</form>
@@ -148,9 +152,12 @@ final class PlaidAct_FluentCRM_Directory {
 
 
 	private function update_list_meta_from_request(): void {
-		$list_id   = isset( $_POST['list_id'] ) ? absint( wp_unslash( $_POST['list_id'] ) ) : 0;
-		$image_url = isset( $_POST['image_url'] ) ? esc_url_raw( wp_unslash( $_POST['image_url'] ) ) : '';
-		if ( $list_id < 1 ) {
+		$list_id      = isset( $_POST['list_id'] ) ? absint( wp_unslash( $_POST['list_id'] ) ) : 0;
+		$name         = isset( $_POST['list_name'] ) ? sanitize_text_field( wp_unslash( $_POST['list_name'] ) ) : '';
+		$column_label = isset( $_POST['column_label'] ) ? sanitize_text_field( wp_unslash( $_POST['column_label'] ) ) : '';
+		$description  = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
+		$image_url    = isset( $_POST['image_url'] ) ? esc_url_raw( wp_unslash( $_POST['image_url'] ) ) : '';
+		if ( $list_id < 1 || '' === $name || '' === $column_label ) {
 			return;
 		}
 		$lists = $this->get_lists();
@@ -158,7 +165,10 @@ final class PlaidAct_FluentCRM_Directory {
 			if ( $list_id !== (int) $list['id'] ) {
 				continue;
 			}
-			$list['image_url']  = $image_url;
+			$list['name']         = $name;
+			$list['column_label'] = $column_label;
+			$list['description']  = $description;
+			$list['image_url']    = $image_url;
 			$list['updated_at'] = time();
 			break;
 		}
