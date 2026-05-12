@@ -16,6 +16,7 @@ final class PlaidAct_FluentCRM_Directory {
 	private const NONCE_IMPORT          = 'plaidact_contact_directory_import';
 	private const NONCE_DOWNLOAD_PREFIX = 'plaidact_contact_directory_download_';
 	private const DOWNLOAD_ACTION       = 'plaidact_contact_directory_download';
+	private const OPTION_VISIBLE_COLUMNS = 'plaidact_contact_directory_visible_columns';
 
 	private static ?PlaidAct_FluentCRM_Directory $instance = null;
 
@@ -62,6 +63,19 @@ final class PlaidAct_FluentCRM_Directory {
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'Répertoire de contacts', 'plaidact-breves-feed' ); ?></h1>
 			<p><?php echo esc_html__( 'Créez des listes, importez vos CSV et affichez-les sur le site avec le shortcode [plaidact_contact_directory].', 'plaidact-breves-feed' ); ?></p>
+			<?php $visible_columns = $this->get_visible_columns(); ?>
+			<h2><?php echo esc_html__( 'Colonnes à afficher (front office)', 'plaidact-breves-feed' ); ?></h2>
+			<form method="post">
+				<?php wp_nonce_field( self::NONCE_IMPORT ); ?>
+				<input type="hidden" name="plaidact_contact_action" value="update_visible_columns" />
+				<p>
+					<label><input type="checkbox" name="visible_columns[]" value="groupe" <?php checked( in_array( 'groupe', $visible_columns, true ) ); ?> /> <?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></label><br />
+					<label><input type="checkbox" name="visible_columns[]" value="commission" <?php checked( in_array( 'commission', $visible_columns, true ) ); ?> /> <?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></label><br />
+					<label><input type="checkbox" name="visible_columns[]" value="custom" <?php checked( in_array( 'custom', $visible_columns, true ) ); ?> /> <?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></label><br />
+					<label><input type="checkbox" name="visible_columns[]" value="social" <?php checked( in_array( 'social', $visible_columns, true ) ); ?> /> <?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></label>
+				</p>
+				<?php submit_button( __( 'Enregistrer les colonnes', 'plaidact-breves-feed' ), 'secondary' ); ?>
+			</form>
 
 			<h2><?php echo esc_html__( 'Nouvelle liste', 'plaidact-breves-feed' ); ?></h2>
 			<form method="post">
@@ -126,6 +140,9 @@ final class PlaidAct_FluentCRM_Directory {
 		}
 		if ( 'update_list_meta' === $action ) {
 			$this->update_list_meta_from_request();
+		}
+		if ( 'update_visible_columns' === $action ) {
+			$this->update_visible_columns_from_request();
 		}
 	}
 
@@ -255,6 +272,30 @@ final class PlaidAct_FluentCRM_Directory {
 		return $links;
 	}
 
+
+	private function get_visible_columns(): array {
+		$default = array( 'groupe', 'commission', 'custom', 'social' );
+		$visible = get_option( self::OPTION_VISIBLE_COLUMNS, $default );
+		if ( ! is_array( $visible ) ) {
+			return $default;
+		}
+		$allowed = array( 'groupe', 'commission', 'custom', 'social' );
+		$visible = array_values( array_intersect( $allowed, $visible ) );
+		return empty( $visible ) ? $default : $visible;
+	}
+
+	private function update_visible_columns_from_request(): void {
+		$columns = isset( $_POST['visible_columns'] ) ? (array) wp_unslash( $_POST['visible_columns'] ) : array();
+		$columns = array_map( 'sanitize_key', $columns );
+		$allowed = array( 'groupe', 'commission', 'custom', 'social' );
+		$columns = array_values( array_intersect( $allowed, $columns ) );
+		if ( empty( $columns ) ) {
+			$columns = $allowed;
+		}
+		update_option( self::OPTION_VISIBLE_COLUMNS, $columns, false );
+	}
+
+
 	public function render_shortcode(): string {
 		wp_enqueue_style( 'plaidact-fluentcrm-directory' );
 		wp_enqueue_script( 'plaidact-contact-directory' );
@@ -294,6 +335,7 @@ final class PlaidAct_FluentCRM_Directory {
 		$custom_values     = $this->get_unique_contact_values( $displayed_contacts, 'custom' );
 		$commission_values = $this->get_unique_contact_values( $displayed_contacts, 'commission' );
 		$groupe_values     = $this->get_unique_contact_values( $displayed_contacts, 'groupe' );
+		$visible_columns   = $this->get_visible_columns();
 
 		$download_url = null;
 		if ( ! $show_all_lists && null !== $current ) {
@@ -339,36 +381,30 @@ final class PlaidAct_FluentCRM_Directory {
 						<th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th>
 						<th><?php echo esc_html__( 'Liste', 'plaidact-breves-feed' ); ?></th>
 						<th><?php echo esc_html__( 'Email', 'plaidact-breves-feed' ); ?></th>
-						<th class="plaidact-fcd-col-toggle" data-column="groupe"><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></th>
-						<th class="plaidact-fcd-col-toggle" data-column="commission"><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></th>
-						<th class="plaidact-fcd-col-toggle" data-column="custom"><?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></th>
-						<th class="plaidact-fcd-col-toggle" data-column="social"><?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></th>
+						<?php if ( in_array( 'groupe', $visible_columns, true ) ) : ?><th><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
+						<?php if ( in_array( 'commission', $visible_columns, true ) ) : ?><th><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
+						<?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><th><?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
+						<?php if ( in_array( 'social', $visible_columns, true ) ) : ?><th><?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
 					</tr>
 					<tr class="plaidact-fcd-filter-row">
 						<th><input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher…', 'plaidact-breves-feed' ); ?>" /></th>
 						<th></th><th></th><th></th>
-						<th><select class="plaidact-fcd-select-filter" data-filter="groupe"><option value=""><?php echo esc_html__( 'Tous', 'plaidact-breves-feed' ); ?></option><?php foreach ( $groupe_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th>
-						<th><select class="plaidact-fcd-select-filter" data-filter="commission"><option value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></option><?php foreach ( $commission_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th>
-						<th><select class="plaidact-fcd-select-filter" data-filter="custom"><option value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></option><?php foreach ( $custom_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th>
-						<th></th>
+						<?php if ( in_array( 'groupe', $visible_columns, true ) ) : ?><th><select class="plaidact-fcd-select-filter" data-filter="groupe"><option value=""><?php echo esc_html__( 'Tous', 'plaidact-breves-feed' ); ?></option><?php foreach ( $groupe_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th><?php endif; ?>
+						<?php if ( in_array( 'commission', $visible_columns, true ) ) : ?><th><select class="plaidact-fcd-select-filter" data-filter="commission"><option value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></option><?php foreach ( $commission_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th><?php endif; ?>
+						<?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><th><select class="plaidact-fcd-select-filter" data-filter="custom"><option value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></option><?php foreach ( $custom_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th><?php endif; ?>
+						<?php if ( in_array( 'social', $visible_columns, true ) ) : ?><th></th><?php endif; ?>
 					</tr>
 				</thead>
 				<tbody>
 				<?php foreach ( $displayed_contacts as $contact ) : ?>
 					<tr data-custom="<?php echo esc_attr( strtolower( (string) ( $contact['custom'] ?? '' ) ) ); ?>" data-groupe="<?php echo esc_attr( strtolower( (string) ( $contact['groupe'] ?? '' ) ) ); ?>" data-commission="<?php echo esc_attr( strtolower( (string) ( $contact['commission'] ?? '' ) ) ); ?>">
-						<td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $contact['list_name'] ?? '' ); ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><td><?php echo esc_html( $contact['groupe'] ?? '' ); ?></td><td><?php echo esc_html( $contact['commission'] ?? '' ); ?></td><td><?php echo esc_html( $contact['custom'] ); ?></td><td><?php echo $this->render_social_links( $contact['social_links'] ?? array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td>
+						<td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $contact['list_name'] ?? '' ); ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><?php if ( in_array( 'groupe', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['groupe'] ?? '' ); ?></td><?php endif; ?><?php if ( in_array( 'commission', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['commission'] ?? '' ); ?></td><?php endif; ?><?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['custom'] ); ?></td><?php endif; ?><?php if ( in_array( 'social', $visible_columns, true ) ) : ?><td><?php echo $this->render_social_links( $contact['social_links'] ?? array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td><?php endif; ?>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>
 			</table>
 			</div>
-			<div class="plaidact-fcd-column-controls">
-				<span><?php echo esc_html__( 'Colonnes à afficher :', 'plaidact-breves-feed' ); ?></span>
-				<label><input type="checkbox" class="plaidact-fcd-column-toggle" data-column="groupe" checked /> <?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></label>
-				<label><input type="checkbox" class="plaidact-fcd-column-toggle" data-column="commission" checked /> <?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></label>
-				<label><input type="checkbox" class="plaidact-fcd-column-toggle" data-column="custom" checked /> <?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></label>
-				<label><input type="checkbox" class="plaidact-fcd-column-toggle" data-column="social" checked /> <?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></label>
-			</div>			</div>
+			</div>
 
 		</div>
 		<?php
