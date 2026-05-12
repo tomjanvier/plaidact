@@ -265,21 +265,39 @@ final class PlaidAct_FluentCRM_Directory {
 		$current         = null;
 		$current_slug    = isset( $_GET['list'] ) ? sanitize_title( wp_unslash( $_GET['list'] ) ) : '';
 		$current_list_id = isset( $_GET['list_id'] ) ? absint( wp_unslash( $_GET['list_id'] ) ) : 0;
+		$show_all_lists  = '' === $current_slug && 0 === $current_list_id;
 		if ( '' !== $current_slug ) {
 			$current = $this->get_list_by_slug( $current_slug );
 		}
 		if ( null === $current && $current_list_id > 0 ) {
 			$current = $this->get_list_by_id( $current_list_id );
 		}
-		if ( null === $current ) {
+		if ( ! $show_all_lists && null === $current ) {
 			$current = $lists[0];
 		}
 
-		$custom_values     = $this->get_unique_contact_values( $current['contacts'], 'custom' );
-		$commission_values = $this->get_unique_contact_values( $current['contacts'], 'commission' );
-		$groupe_values     = $this->get_unique_contact_values( $current['contacts'], 'groupe' );
+		$displayed_contacts = array();
+		if ( $show_all_lists ) {
+			foreach ( $lists as $list ) {
+				foreach ( $list['contacts'] as $contact ) {
+					$contact['list_name'] = $list['name'];
+					$displayed_contacts[] = $contact;
+				}
+			}
+		} elseif ( null !== $current ) {
+			foreach ( $current['contacts'] as $contact ) {
+				$contact['list_name'] = $current['name'];
+				$displayed_contacts[] = $contact;
+			}
+		}
 
-		$download_url = add_query_arg(
+		$custom_values     = $this->get_unique_contact_values( $displayed_contacts, 'custom' );
+		$commission_values = $this->get_unique_contact_values( $displayed_contacts, 'commission' );
+		$groupe_values     = $this->get_unique_contact_values( $displayed_contacts, 'groupe' );
+
+		$download_url = null;
+		if ( ! $show_all_lists && null !== $current ) {
+			$download_url = add_query_arg(
 			array(
 				'action'  => self::DOWNLOAD_ACTION,
 				'list_id' => (int) $current['id'],
@@ -287,6 +305,7 @@ final class PlaidAct_FluentCRM_Directory {
 			),
 			admin_url( 'admin-post.php' )
 		);
+		}
 
 		ob_start(); ?>
 		<div class="plaidact-fcd">
@@ -294,10 +313,12 @@ final class PlaidAct_FluentCRM_Directory {
 				<h3><?php echo esc_html__( 'Répertoire de contacts', 'plaidact-breves-feed' ); ?></h3>
 				<p><?php echo esc_html__( 'Choisissez une liste, recherchez un contact et exportez le tableau en CSV.', 'plaidact-breves-feed' ); ?></p>
 			</div>
-			<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger la liste CSV', 'plaidact-breves-feed' ); ?></a>
-			<div class="plaidact-fcd-current-list">
-				<strong><?php echo esc_html( $current['name'] ); ?></strong>
-			</div>
+			<?php if ( null !== $download_url ) : ?>
+				<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger la liste CSV', 'plaidact-breves-feed' ); ?></a>
+			<?php endif; ?>
+			<?php if ( ! $show_all_lists ) : ?>
+				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost" href="<?php echo esc_url( remove_query_arg( array( 'list', 'list_id' ) ) ); ?>"><?php echo esc_html__( 'Retour à la liste complète', 'plaidact-breves-feed' ); ?></a>
+			<?php endif; ?>
 			<div class="plaidact-fcd-list-grid" role="tablist" aria-label="<?php echo esc_attr__( 'Listes de contacts', 'plaidact-breves-feed' ); ?>">
 				<?php foreach ( $lists as $list ) : ?>
 					<?php $list_is_active = (int) $list['id'] === (int) $current['id']; ?>
@@ -333,9 +354,9 @@ final class PlaidAct_FluentCRM_Directory {
 					</tr>
 				</thead>
 				<tbody>
-				<?php foreach ( $current['contacts'] as $contact ) : ?>
+				<?php foreach ( $displayed_contacts as $contact ) : ?>
 					<tr data-custom="<?php echo esc_attr( strtolower( (string) ( $contact['custom'] ?? '' ) ) ); ?>" data-groupe="<?php echo esc_attr( strtolower( (string) ( $contact['groupe'] ?? '' ) ) ); ?>" data-commission="<?php echo esc_attr( strtolower( (string) ( $contact['commission'] ?? '' ) ) ); ?>">
-						<td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $current['name'] ); ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><td><?php echo esc_html( $contact['groupe'] ?? '' ); ?></td><td><?php echo esc_html( $contact['commission'] ?? '' ); ?></td><td><?php echo esc_html( $contact['custom'] ); ?></td><td><?php echo $this->render_social_links( $contact['social_links'] ?? array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td>
+						<td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $contact['list_name'] ?? '' ); ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><td><?php echo esc_html( $contact['groupe'] ?? '' ); ?></td><td><?php echo esc_html( $contact['commission'] ?? '' ); ?></td><td><?php echo esc_html( $contact['custom'] ); ?></td><td><?php echo $this->render_social_links( $contact['social_links'] ?? array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>
