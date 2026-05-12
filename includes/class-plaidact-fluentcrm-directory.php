@@ -295,6 +295,10 @@ final class PlaidAct_FluentCRM_Directory {
 				<p><?php echo esc_html__( 'Choisissez une liste, recherchez un contact et exportez le tableau en CSV.', 'plaidact-breves-feed' ); ?></p>
 			</div>
 			<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger la liste CSV', 'plaidact-breves-feed' ); ?></a>
+			<div class="plaidact-fcd-current-list">
+				<span class="plaidact-fcd-current-list__label"><?php echo esc_html__( 'Liste sélectionnée', 'plaidact-breves-feed' ); ?></span>
+				<strong><?php echo esc_html( $current['name'] ); ?></strong>
+			</div>
 			<div class="plaidact-fcd-list-grid" role="tablist" aria-label="<?php echo esc_attr__( 'Listes de contacts', 'plaidact-breves-feed' ); ?>">
 				<?php foreach ( $lists as $list ) : ?>
 					<?php $list_is_active = (int) $list['id'] === (int) $current['id']; ?>
@@ -310,6 +314,7 @@ final class PlaidAct_FluentCRM_Directory {
 			<div class="plaidact-fcd-filters">
 				<input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher dans les contacts…', 'plaidact-breves-feed' ); ?>" />
 				<div class="plaidact-fcd-filter-block" aria-label="<?php echo esc_attr__( 'Fonction', 'plaidact-breves-feed' ); ?>">
+					<h4 class="plaidact-fcd-filter-title"><?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></h4>
 					<div class="plaidact-fcd-filter-buttons" data-filter="custom">
 						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></button>
 						<?php foreach ( $custom_values as $value ) : ?>
@@ -318,6 +323,7 @@ final class PlaidAct_FluentCRM_Directory {
 					</div>
 				</div>
 				<div class="plaidact-fcd-filter-block" aria-label="<?php echo esc_attr__( 'Commission', 'plaidact-breves-feed' ); ?>">
+					<h4 class="plaidact-fcd-filter-title"><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></h4>
 					<div class="plaidact-fcd-filter-buttons" data-filter="commission">
 						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></button>
 						<?php foreach ( $commission_values as $value ) : ?>
@@ -326,6 +332,7 @@ final class PlaidAct_FluentCRM_Directory {
 					</div>
 				</div>
 				<div class="plaidact-fcd-filter-block" aria-label="<?php echo esc_attr__( 'Groupe politique', 'plaidact-breves-feed' ); ?>">
+					<h4 class="plaidact-fcd-filter-title"><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></h4>
 					<div class="plaidact-fcd-filter-buttons" data-filter="groupe">
 						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Tous', 'plaidact-breves-feed' ); ?></button>
 						<?php foreach ( $groupe_values as $value ) : ?>
