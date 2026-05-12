@@ -242,7 +242,7 @@ final class PlaidAct_FluentCRM_Directory {
 				'custom'       => sanitize_text_field( (string) ( $data['Fonction'] ?? $data['Groupe politique'] ?? '' ) ),
 				'institution'  => sanitize_text_field( (string) ( $data['Institution'] ?? '' ) ),
 				'groupe'       => sanitize_text_field( (string) ( $data['Groupe politique'] ?? '' ) ),
-				'commission'   => sanitize_text_field( (string) ( $data['Commission'] ?? '' ) ),
+				'commission'   => $this->normalize_commission_value( (string) ( $data['Commission'] ?? '' ) ),
 				'social_links' => $this->parse_social_links( $data ),
 				'email'        => sanitize_email( (string) ( $data['Email'] ?? '' ) ),
 				'notes'        => sanitize_textarea_field( (string) ( $data['Notes'] ?? '' ) ),
@@ -250,6 +250,23 @@ final class PlaidAct_FluentCRM_Directory {
 		}
 		fclose( $handle );
 		return $rows;
+	}
+
+
+	private function normalize_commission_value( string $value ): string {
+		$parts = preg_split( '/[|;,]+/u', $value );
+		if ( ! is_array( $parts ) ) {
+			return sanitize_text_field( trim( $value ) );
+		}
+		$clean = array();
+		foreach ( $parts as $part ) {
+			$item = sanitize_text_field( trim( (string) $part ) );
+			if ( '' === $item ) {
+				continue;
+			}
+			$clean[ mb_strtolower( $item ) ] = $item;
+		}
+		return implode( ' | ', array_values( $clean ) );
 	}
 
 
@@ -340,13 +357,13 @@ final class PlaidAct_FluentCRM_Directory {
 		$download_url = null;
 		if ( ! $show_all_lists && null !== $current ) {
 			$download_url = add_query_arg(
-			array(
-				'action'  => self::DOWNLOAD_ACTION,
-				'list_id' => (int) $current['id'],
-				'nonce'   => wp_create_nonce( self::NONCE_DOWNLOAD_PREFIX . $current['id'] ),
-			),
-			admin_url( 'admin-post.php' )
-		);
+				array(
+					'action'  => self::DOWNLOAD_ACTION,
+					'list_id' => (int) $current['id'],
+					'nonce'   => wp_create_nonce( self::NONCE_DOWNLOAD_PREFIX . $current['id'] ),
+				),
+				admin_url( 'admin-post.php' )
+			);
 		}
 
 		ob_start(); ?>
@@ -356,7 +373,8 @@ final class PlaidAct_FluentCRM_Directory {
 				<p><?php echo esc_html__( 'Choisissez une liste, recherchez un contact et exportez le tableau en CSV.', 'plaidact-breves-feed' ); ?></p>
 			</div>
 			<?php if ( null !== $download_url ) : ?>
-				<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger la liste CSV', 'plaidact-breves-feed' ); ?></a>
+				<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger toute la liste', 'plaidact-breves-feed' ); ?></a>
+				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost plaidact-fcd-filtered-download" data-base-url="<?php echo esc_url( $download_url ); ?>" href="<?php echo esc_url( add_query_arg( 'filtered', '1', $download_url ) ); ?>"><?php echo esc_html__( 'Télécharger le CSV filtré', 'plaidact-breves-feed' ); ?></a>
 			<?php endif; ?>
 			<?php if ( ! $show_all_lists ) : ?>
 				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost" href="<?php echo esc_url( remove_query_arg( array( 'list', 'list_id' ) ) ); ?>"><?php echo esc_html__( 'Retour à la liste complète', 'plaidact-breves-feed' ); ?></a>
@@ -437,13 +455,57 @@ final class PlaidAct_FluentCRM_Directory {
 		}
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename=contacts-' . $list_id . '.csv' );
+		$contacts = $list['contacts'];
+		$filtered = isset( $_GET['filtered'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['filtered'] ) );
+		if ( $filtered ) {
+			$search = isset( $_GET['search'] ) ? sanitize_text_field( wp_unslash( $_GET['search'] ) ) : '';
+			$custom = isset( $_GET['custom'] ) ? sanitize_text_field( wp_unslash( $_GET['custom'] ) ) : '';
+			$groupe = isset( $_GET['groupe'] ) ? sanitize_text_field( wp_unslash( $_GET['groupe'] ) ) : '';
+			$commission = isset( $_GET['commission'] ) ? sanitize_text_field( wp_unslash( $_GET['commission'] ) ) : '';
+			$contacts = $this->filter_contacts_for_download( $contacts, $search, $custom, $groupe, $commission );
+		}
 		$output = fopen( 'php://output', 'w' );
 		fputcsv( $output, array( 'Nom', 'Prénom', $list['column_label'], 'Institution', 'Groupe politique', 'Commission', 'Email', 'Notes' ) );
-		foreach ( $list['contacts'] as $contact ) {
+		foreach ( $contacts as $contact ) {
 			fputcsv( $output, array( $contact['nom'], $contact['prenom'], $contact['custom'], $contact['institution'] ?? '', $contact['groupe'] ?? '', $contact['commission'] ?? '', $contact['email'], $contact['notes'] ) );
 		}
 		fclose( $output );
 		exit;
+	}
+
+	private function filter_contacts_for_download( array $contacts, string $search, string $custom, string $groupe, string $commission ): array {
+		$search = mb_strtolower( trim( $search ) );
+		$custom = mb_strtolower( trim( $custom ) );
+		$groupe = mb_strtolower( trim( $groupe ) );
+		$commission = mb_strtolower( trim( $commission ) );
+		return array_values( array_filter( $contacts, static function ( array $contact ) use ( $search, $custom, $groupe, $commission ): bool {
+			$haystack = mb_strtolower( implode( ' ', array_map( 'strval', array(
+				$contact['nom'] ?? '',
+				$contact['prenom'] ?? '',
+				$contact['custom'] ?? '',
+				$contact['institution'] ?? '',
+				$contact['groupe'] ?? '',
+				$contact['commission'] ?? '',
+				$contact['email'] ?? '',
+				$contact['notes'] ?? '',
+			) ) ) );
+			if ( '' !== $search && false === strpos( $haystack, $search ) ) {
+				return false;
+			}
+			if ( '' !== $custom && mb_strtolower( (string) ( $contact['custom'] ?? '' ) ) !== $custom ) {
+				return false;
+			}
+			if ( '' !== $groupe && mb_strtolower( (string) ( $contact['groupe'] ?? '' ) ) !== $groupe ) {
+				return false;
+			}
+			if ( '' !== $commission ) {
+				$parts = preg_split( '/\s*[|;,]\s*/u', mb_strtolower( (string) ( $contact['commission'] ?? '' ) ) );
+				if ( ! is_array( $parts ) || ! in_array( $commission, $parts, true ) ) {
+					return false;
+				}
+			}
+			return true;
+		} ) );
 	}
 
 	private function get_lists(): array {
@@ -474,6 +536,18 @@ final class PlaidAct_FluentCRM_Directory {
 		foreach ( $contacts as $contact ) {
 			$value = trim( (string) ( $contact[ $key ] ?? '' ) );
 			if ( '' === $value ) {
+				continue;
+			}
+			if ( 'commission' === $key ) {
+				$parts = preg_split( '/\s*[|;,]\s*/u', $value );
+				if ( is_array( $parts ) ) {
+					foreach ( $parts as $part ) {
+						$part = trim( (string) $part );
+						if ( '' !== $part ) {
+							$values[ $part ] = $part;
+						}
+					}
+				}
 				continue;
 			}
 			$values[ $value ] = $value;

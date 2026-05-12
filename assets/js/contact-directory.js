@@ -1,4 +1,25 @@
 (function () {
+	function commissionMatches(value, selected) {
+		if (!selected) return true;
+		var parts = (value || '').toLowerCase().split(/\s*[|;,]\s*/).filter(Boolean);
+		return parts.includes(selected);
+	}
+
+	function buildFilteredDownloadUrl(root) {
+		var link = root.querySelector('.plaidact-fcd-filtered-download');
+		if (!link) return;
+		var baseUrl = link.dataset.baseUrl;
+		if (!baseUrl) return;
+
+		var url = new URL(baseUrl, window.location.origin);
+		url.searchParams.set('filtered', '1');
+		url.searchParams.set('search', root.querySelector('.plaidact-fcd-search')?.value || '');
+		url.searchParams.set('custom', root.querySelector('.plaidact-fcd-select-filter[data-filter="custom"]')?.value || '');
+		url.searchParams.set('commission', root.querySelector('.plaidact-fcd-select-filter[data-filter="commission"]')?.value || '');
+		url.searchParams.set('groupe', root.querySelector('.plaidact-fcd-select-filter[data-filter="groupe"]')?.value || '');
+		link.href = url.toString();
+	}
+
 	function filterRows(root) {
 		var search = (root.querySelector('.plaidact-fcd-search')?.value || '').toLowerCase();
 		var custom = root.querySelector('.plaidact-fcd-select-filter[data-filter="custom"]')?.value || '';
@@ -8,10 +29,12 @@
 		root.querySelectorAll('tbody tr').forEach(function (row) {
 			var matchesSearch = row.innerText.toLowerCase().includes(search);
 			var matchesCustom = !custom || (row.dataset.custom || '') === custom;
-			var matchesCommission = !commission || (row.dataset.commission || '') === commission;
+			var matchesCommission = commissionMatches(row.dataset.commission || '', commission);
 			var matchesGroupe = !groupe || (row.dataset.groupe || '') === groupe;
 			row.style.display = matchesSearch && matchesCustom && matchesCommission && matchesGroupe ? '' : 'none';
 		});
+
+		buildFilteredDownloadUrl(root);
 	}
 
 	function toggleColumns(root) {
