@@ -309,8 +309,7 @@ final class PlaidAct_FluentCRM_Directory {
 			</div>
 			<div class="plaidact-fcd-filters">
 				<input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher dans les contacts…', 'plaidact-breves-feed' ); ?>" />
-				<div class="plaidact-fcd-filter-block">
-					<p><?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></p>
+				<div class="plaidact-fcd-filter-block" aria-label="<?php echo esc_attr__( 'Fonction', 'plaidact-breves-feed' ); ?>">
 					<div class="plaidact-fcd-filter-buttons" data-filter="custom">
 						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></button>
 						<?php foreach ( $custom_values as $value ) : ?>
@@ -318,8 +317,7 @@ final class PlaidAct_FluentCRM_Directory {
 						<?php endforeach; ?>
 					</div>
 				</div>
-				<div class="plaidact-fcd-filter-block">
-					<p><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></p>
+				<div class="plaidact-fcd-filter-block" aria-label="<?php echo esc_attr__( 'Commission', 'plaidact-breves-feed' ); ?>">
 					<div class="plaidact-fcd-filter-buttons" data-filter="commission">
 						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></button>
 						<?php foreach ( $commission_values as $value ) : ?>
@@ -327,8 +325,7 @@ final class PlaidAct_FluentCRM_Directory {
 						<?php endforeach; ?>
 					</div>
 				</div>
-				<div class="plaidact-fcd-filter-block">
-					<p><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></p>
+				<div class="plaidact-fcd-filter-block" aria-label="<?php echo esc_attr__( 'Groupe politique', 'plaidact-breves-feed' ); ?>">
 					<div class="plaidact-fcd-filter-buttons" data-filter="groupe">
 						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Tous', 'plaidact-breves-feed' ); ?></button>
 						<?php foreach ( $groupe_values as $value ) : ?>
