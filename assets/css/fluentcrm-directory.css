@@ -21,6 +21,7 @@
 .plaidact-fcd-list-card p{margin:0 0 .65rem;color:#403053;font-size:.92rem}
 .plaidact-fcd-btn{display:inline-flex;align-items:center;gap:.35rem;background:var(--plaid-purple);color:#fff;border-radius:999px;padding:.5rem .9rem;text-decoration:none;font-weight:700}
 .plaidact-fcd-btn--download{margin-top:1rem}
+.plaidact-fcd-btn--ghost{margin-top:1rem;margin-left:.55rem;background:#fff;color:var(--plaid-purple);border:1px solid #d4c2e7}
 .plaidact-fcd-empty{background:var(--plaid-lilac);border-radius:12px;padding:.8rem;color:#3f3352;margin-top:.9rem}
 
 .plaidact-fcd-table-wrap{margin-top:1rem;padding:.8rem;border:1px solid #d8c4ee;border-radius:18px;background:linear-gradient(145deg,#fff,#f7f2fd);box-shadow:0 20px 45px rgba(42,23,56,.08);overflow:auto}
