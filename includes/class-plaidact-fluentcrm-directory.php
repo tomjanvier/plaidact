@@ -198,7 +198,19 @@ final class PlaidAct_FluentCRM_Directory {
 		if ( $list_id < 1 || empty( $_FILES['contacts_csv']['tmp_name'] ) ) {
 			return;
 		}
-		$rows = $this->parse_csv_contacts( $_FILES['contacts_csv']['tmp_name'] );
+
+		$tmp_name = (string) $_FILES['contacts_csv']['tmp_name'];
+		if ( ! is_uploaded_file( $tmp_name ) ) {
+			return;
+		}
+
+		$file_name = isset( $_FILES['contacts_csv']['name'] ) ? (string) $_FILES['contacts_csv']['name'] : '';
+		$file_type = wp_check_filetype_and_ext( $tmp_name, $file_name );
+		if ( empty( $file_type['ext'] ) || 'csv' !== strtolower( (string) $file_type['ext'] ) ) {
+			return;
+		}
+
+		$rows = $this->parse_csv_contacts( $tmp_name );
 		if ( empty( $rows ) ) {
 			return;
 		}
@@ -231,7 +243,13 @@ final class PlaidAct_FluentCRM_Directory {
 			$header = preg_replace( '/^\xEF\xBB\xBF/u', '', $header );
 			return $header;
 		}, $headers );
+		$max_rows = 5000;
+		$row_count = 0;
 		while ( ( $line = fgetcsv( $handle ) ) !== false ) {
+			$row_count++;
+			if ( $row_count > $max_rows ) {
+				break;
+			}
 			$data = array_combine( $headers, $line );
 			if ( ! is_array( $data ) ) {
 				continue;
@@ -381,7 +399,7 @@ final class PlaidAct_FluentCRM_Directory {
 			<?php endif; ?>
 			<div class="plaidact-fcd-list-grid" role="tablist" aria-label="<?php echo esc_attr__( 'Listes de contacts', 'plaidact-breves-feed' ); ?>">
 				<?php foreach ( $lists as $list ) : ?>
-					<?php $list_is_active = (int) $list['id'] === (int) $current['id']; ?>
+					<?php $list_is_active = null !== $current && (int) $list['id'] === (int) $current['id']; ?>
 					<a class="plaidact-fcd-list-card <?php echo $list_is_active ? 'is-active' : ''; ?>" aria-current="<?php echo $list_is_active ? 'page' : 'false'; ?>" href="<?php echo esc_url( add_query_arg( 'list', sanitize_title( (string) $list['name'] ) ) ); ?>">
 						<?php if ( ! empty( $list['image_url'] ) ) : ?>
 							<img class="plaidact-fcd-list-image" src="<?php echo esc_url( $list['image_url'] ); ?>" alt="" />
@@ -467,7 +485,19 @@ final class PlaidAct_FluentCRM_Directory {
 		$output = fopen( 'php://output', 'w' );
 		fputcsv( $output, array( 'Nom', 'Prénom', $list['column_label'], 'Institution', 'Groupe politique', 'Commission', 'Email', 'Notes' ) );
 		foreach ( $contacts as $contact ) {
-			fputcsv( $output, array( $contact['nom'], $contact['prenom'], $contact['custom'], $contact['institution'] ?? '', $contact['groupe'] ?? '', $contact['commission'] ?? '', $contact['email'], $contact['notes'] ) );
+			fputcsv(
+				$output,
+				array(
+					$this->escape_csv_formula( (string) ( $contact['nom'] ?? '' ) ),
+					$this->escape_csv_formula( (string) ( $contact['prenom'] ?? '' ) ),
+					$this->escape_csv_formula( (string) ( $contact['custom'] ?? '' ) ),
+					$this->escape_csv_formula( (string) ( $contact['institution'] ?? '' ) ),
+					$this->escape_csv_formula( (string) ( $contact['groupe'] ?? '' ) ),
+					$this->escape_csv_formula( (string) ( $contact['commission'] ?? '' ) ),
+					$this->escape_csv_formula( (string) ( $contact['email'] ?? '' ) ),
+					$this->escape_csv_formula( (string) ( $contact['notes'] ?? '' ) ),
+				)
+			);
 		}
 		fclose( $output );
 		exit;
@@ -553,5 +583,19 @@ final class PlaidAct_FluentCRM_Directory {
 			$values[ $value ] = $value;
 		}
 		return array_values( $values );
+	}
+
+	private function escape_csv_formula( string $value ): string {
+		$trimmed = ltrim( $value );
+		if ( '' === $trimmed ) {
+			return $value;
+		}
+
+		$first_char = substr( $trimmed, 0, 1 );
+		if ( in_array( $first_char, array( '=', '+', '-', '@' ), true ) ) {
+			return "'" . $value;
+		}
+
+		return $value;
 	}
 }
