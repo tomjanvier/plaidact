@@ -10,8 +10,8 @@
 .plaidact-fcd-directory__lead h3{margin:0;color:var(--plaid-purple)}
 .plaidact-fcd-directory__lead p{margin:.35rem 0 0;color:var(--plaid-muted)}
 .plaidact-fcd-list-grid{display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem}
-.plaidact-fcd-list-card{background:#fff;border:1px solid #e8e0f2;border-radius:16px;overflow:hidden;box-shadow:0 10px 26px rgba(42,23,56,.08)}
-.plaidact-fcd-list-card.is-active{border:2px solid #7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.2),0 14px 30px rgba(91,47,143,.22);transform:translateY(-2px)}
+.plaidact-fcd-list-card{background:linear-gradient(150deg,#fff 0%,#f8f3ff 100%);border:1px solid #e8e0f2;border-radius:16px;overflow:hidden;box-shadow:0 10px 26px rgba(42,23,56,.08);transition:all .2s ease}
+.plaidact-fcd-list-card.is-active{background:linear-gradient(145deg,#efe3ff 0%,#e2d0fb 100%);border:2px solid #6330b0;box-shadow:0 0 0 3px rgba(99,48,176,.25),0 16px 34px rgba(67,30,112,.28);transform:translateY(-2px)}
 .plaidact-fcd-current-list{display:flex;align-items:baseline;gap:.5rem;margin-top:1rem;padding:.7rem .95rem;border:1px solid #ddc9f0;border-radius:12px;background:linear-gradient(120deg,#f8f3fe,#fff)}
 .plaidact-fcd-current-list__label{font-size:.84rem;font-weight:700;color:#614183;text-transform:uppercase;letter-spacing:.03em}
 .plaidact-fcd-list-image{display:flex;align-items:center;justify-content:center;width:100%;height:180px;object-fit:cover;background:#f2edf8;color:var(--plaid-purple);font-weight:800}
@@ -74,3 +74,6 @@
 .plaidact-fcd-select-filter{width:100%;padding:.45rem;border:1px solid #d4c2e7;border-radius:8px;background:#fff}
 .plaidact-fcd-column-controls{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin-top:.75rem;padding:.65rem .8rem;border:1px solid #e6d9f4;border-radius:12px;background:#fcf9ff}
 .plaidact-fcd-column-controls label{font-size:.9rem;color:#452567}
+
+.plaidact-fcd-list-card:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(42,23,56,.14)}
+.plaidact-fcd-table td:last-child{max-width:320px;white-space:normal;color:#4a365f}
