@@ -15,13 +15,22 @@
 	}
 
 	function toggleColumns(root) {
-		var indexByColumn = { groupe: 4, commission: 5, custom: 6, social: 7 };
-		Object.keys(indexByColumn).forEach(function (column) {
+		var table = root.querySelector('.plaidact-fcd-table');
+		if (!table) return;
+		var headerRow = table.querySelector('thead tr');
+		if (!headerRow) return;
+
+		['groupe', 'commission', 'custom', 'social'].forEach(function (column) {
 			var checked = root.querySelector('.plaidact-fcd-column-toggle[data-column="' + column + '"]')?.checked;
 			var visible = checked !== false;
-			root.querySelectorAll('table tr').forEach(function (row) {
-				if (row.children[indexByColumn[column]]) {
-					row.children[indexByColumn[column]].style.display = visible ? '' : 'none';
+			var headerCell = headerRow.querySelector('th[data-column="' + column + '"]');
+			if (!headerCell) return;
+			var index = Array.prototype.indexOf.call(headerRow.children, headerCell);
+			if (index < 0) return;
+
+			table.querySelectorAll('tr').forEach(function (row) {
+				if (row.children[index]) {
+					row.children[index].style.display = visible ? '' : 'none';
 				}
 			});
 		});

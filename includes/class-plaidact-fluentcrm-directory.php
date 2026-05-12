@@ -381,10 +381,11 @@ final class PlaidAct_FluentCRM_Directory {
 						<th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th>
 						<th><?php echo esc_html__( 'Liste', 'plaidact-breves-feed' ); ?></th>
 						<th><?php echo esc_html__( 'Email', 'plaidact-breves-feed' ); ?></th>
-						<?php if ( in_array( 'groupe', $visible_columns, true ) ) : ?><th><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
-						<?php if ( in_array( 'commission', $visible_columns, true ) ) : ?><th><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
-						<?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><th><?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
-						<?php if ( in_array( 'social', $visible_columns, true ) ) : ?><th><?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
+						<?php if ( in_array( 'groupe', $visible_columns, true ) ) : ?><th data-column="groupe"><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
+						<?php if ( in_array( 'commission', $visible_columns, true ) ) : ?><th data-column="commission"><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
+						<?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><th data-column="custom"><?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
+						<?php if ( in_array( 'social', $visible_columns, true ) ) : ?><th data-column="social"><?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
+						<th><?php echo esc_html__( 'Notes', 'plaidact-breves-feed' ); ?></th>
 					</tr>
 					<tr class="plaidact-fcd-filter-row">
 						<th><input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher…', 'plaidact-breves-feed' ); ?>" /></th>
@@ -393,12 +394,13 @@ final class PlaidAct_FluentCRM_Directory {
 						<?php if ( in_array( 'commission', $visible_columns, true ) ) : ?><th><select class="plaidact-fcd-select-filter" data-filter="commission"><option value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></option><?php foreach ( $commission_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th><?php endif; ?>
 						<?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><th><select class="plaidact-fcd-select-filter" data-filter="custom"><option value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></option><?php foreach ( $custom_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th><?php endif; ?>
 						<?php if ( in_array( 'social', $visible_columns, true ) ) : ?><th></th><?php endif; ?>
+						<th></th>
 					</tr>
 				</thead>
 				<tbody>
 				<?php foreach ( $displayed_contacts as $contact ) : ?>
 					<tr data-custom="<?php echo esc_attr( strtolower( (string) ( $contact['custom'] ?? '' ) ) ); ?>" data-groupe="<?php echo esc_attr( strtolower( (string) ( $contact['groupe'] ?? '' ) ) ); ?>" data-commission="<?php echo esc_attr( strtolower( (string) ( $contact['commission'] ?? '' ) ) ); ?>">
-						<td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $contact['list_name'] ?? '' ); ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><?php if ( in_array( 'groupe', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['groupe'] ?? '' ); ?></td><?php endif; ?><?php if ( in_array( 'commission', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['commission'] ?? '' ); ?></td><?php endif; ?><?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['custom'] ); ?></td><?php endif; ?><?php if ( in_array( 'social', $visible_columns, true ) ) : ?><td><?php echo $this->render_social_links( $contact['social_links'] ?? array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td><?php endif; ?>
+						<td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $contact['list_name'] ?? '' ); ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><?php if ( in_array( 'groupe', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['groupe'] ?? '' ); ?></td><?php endif; ?><?php if ( in_array( 'commission', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['commission'] ?? '' ); ?></td><?php endif; ?><?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['custom'] ); ?></td><?php endif; ?><?php if ( in_array( 'social', $visible_columns, true ) ) : ?><td><?php echo $this->render_social_links( $contact['social_links'] ?? array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td><?php endif; ?><td><?php echo esc_html( $contact['notes'] ?? '' ); ?></td>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>
