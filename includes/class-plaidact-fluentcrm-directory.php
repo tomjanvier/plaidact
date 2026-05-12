@@ -262,11 +262,22 @@ final class PlaidAct_FluentCRM_Directory {
 		if ( empty( $lists ) ) {
 			return '<p class="plaidact-fcd-empty">' . esc_html__( 'Aucune liste de contacts disponible.', 'plaidact-breves-feed' ) . '</p>';
 		}
-		$current_list_id = isset( $_GET['list_id'] ) ? absint( wp_unslash( $_GET['list_id'] ) ) : (int) $lists[0]['id'];
-		$current         = $this->get_list_by_id( $current_list_id );
+		$current         = null;
+		$current_slug    = isset( $_GET['list'] ) ? sanitize_title( wp_unslash( $_GET['list'] ) ) : '';
+		$current_list_id = isset( $_GET['list_id'] ) ? absint( wp_unslash( $_GET['list_id'] ) ) : 0;
+		if ( '' !== $current_slug ) {
+			$current = $this->get_list_by_slug( $current_slug );
+		}
+		if ( null === $current && $current_list_id > 0 ) {
+			$current = $this->get_list_by_id( $current_list_id );
+		}
 		if ( null === $current ) {
 			$current = $lists[0];
 		}
+
+		$custom_values     = $this->get_unique_contact_values( $current['contacts'], 'custom' );
+		$commission_values = $this->get_unique_contact_values( $current['contacts'], 'commission' );
+		$groupe_values     = $this->get_unique_contact_values( $current['contacts'], 'groupe' );
 
 		$download_url = add_query_arg(
 			array(
@@ -284,9 +295,10 @@ final class PlaidAct_FluentCRM_Directory {
 				<p><?php echo esc_html__( 'Choisissez une liste, recherchez un contact et exportez le tableau en CSV.', 'plaidact-breves-feed' ); ?></p>
 			</div>
 			<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger la liste CSV', 'plaidact-breves-feed' ); ?></a>
-			<div class="plaidact-fcd-list-grid">
+			<div class="plaidact-fcd-list-grid" role="tablist" aria-label="<?php echo esc_attr__( 'Listes de contacts', 'plaidact-breves-feed' ); ?>">
 				<?php foreach ( $lists as $list ) : ?>
-					<a class="plaidact-fcd-list-card" href="<?php echo esc_url( add_query_arg( 'list_id', (int) $list['id'] ) ); ?>">
+					<?php $list_is_active = (int) $list['id'] === (int) $current['id']; ?>
+					<a class="plaidact-fcd-list-card <?php echo $list_is_active ? 'is-active' : ''; ?>" aria-current="<?php echo $list_is_active ? 'page' : 'false'; ?>" href="<?php echo esc_url( add_query_arg( 'list', sanitize_title( (string) $list['name'] ) ) ); ?>">
 						<?php if ( ! empty( $list['image_url'] ) ) : ?>
 							<img class="plaidact-fcd-list-image" src="<?php echo esc_url( $list['image_url'] ); ?>" alt="" />
 						<?php else : ?>
@@ -297,9 +309,35 @@ final class PlaidAct_FluentCRM_Directory {
 			</div>
 			<div class="plaidact-fcd-filters">
 				<input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher dans les contacts…', 'plaidact-breves-feed' ); ?>" />
-				<input type="search" class="plaidact-fcd-filter-custom" placeholder="<?php echo esc_attr__( 'Filtrer par fonction…', 'plaidact-breves-feed' ); ?>" />
-				<input type="search" class="plaidact-fcd-filter-meta" placeholder="<?php echo esc_attr__( 'Filtrer Institution / Groupe / Commission…', 'plaidact-breves-feed' ); ?>" />
+				<div class="plaidact-fcd-filter-block">
+					<p><?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></p>
+					<div class="plaidact-fcd-filter-buttons" data-filter="custom">
+						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></button>
+						<?php foreach ( $custom_values as $value ) : ?>
+							<button type="button" class="plaidact-fcd-filter-btn" data-value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></button>
+						<?php endforeach; ?>
+					</div>
+				</div>
+				<div class="plaidact-fcd-filter-block">
+					<p><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></p>
+					<div class="plaidact-fcd-filter-buttons" data-filter="commission">
+						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></button>
+						<?php foreach ( $commission_values as $value ) : ?>
+							<button type="button" class="plaidact-fcd-filter-btn" data-value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></button>
+						<?php endforeach; ?>
+					</div>
+				</div>
+				<div class="plaidact-fcd-filter-block">
+					<p><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></p>
+					<div class="plaidact-fcd-filter-buttons" data-filter="groupe">
+						<button type="button" class="plaidact-fcd-filter-btn is-active" data-value=""><?php echo esc_html__( 'Tous', 'plaidact-breves-feed' ); ?></button>
+						<?php foreach ( $groupe_values as $value ) : ?>
+							<button type="button" class="plaidact-fcd-filter-btn" data-value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></button>
+						<?php endforeach; ?>
+					</div>
+				</div>
 			</div>
+			<div class="plaidact-fcd-table-wrap">
 			<table class="plaidact-fcd-table">
 				<thead><tr><th><?php echo esc_html__( 'Nom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html( $current['column_label'] ); ?></th><th><?php echo esc_html__( 'Informations', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Email', 'plaidact-breves-feed' ); ?></th><th><?php echo esc_html__( 'Notes', 'plaidact-breves-feed' ); ?></th></tr></thead>
 				<tbody>
@@ -309,6 +347,7 @@ final class PlaidAct_FluentCRM_Directory {
 				<?php endforeach; ?>
 				</tbody>
 			</table>
+			</div>
 
 		</div>
 		<?php
@@ -360,5 +399,26 @@ final class PlaidAct_FluentCRM_Directory {
 			}
 		}
 		return null;
+	}
+
+	private function get_list_by_slug( string $list_slug ): ?array {
+		foreach ( $this->get_lists() as $list ) {
+			if ( $list_slug === sanitize_title( (string) ( $list['name'] ?? '' ) ) ) {
+				return $list;
+			}
+		}
+		return null;
+	}
+
+	private function get_unique_contact_values( array $contacts, string $key ): array {
+		$values = array();
+		foreach ( $contacts as $contact ) {
+			$value = trim( (string) ( $contact[ $key ] ?? '' ) );
+			if ( '' === $value ) {
+				continue;
+			}
+			$values[ $value ] = $value;
+		}
+		return array_values( $values );
 	}
 }
