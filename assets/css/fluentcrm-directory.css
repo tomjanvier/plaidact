@@ -10,15 +10,15 @@
 .plaidact-fcd-directory__lead h3{margin:0;color:var(--plaid-purple)}
 .plaidact-fcd-directory__lead p{margin:.35rem 0 0;color:var(--plaid-muted)}
 .plaidact-fcd-list-grid{display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem}
-.plaidact-fcd-list-card{background:linear-gradient(150deg,#fff 0%,#f8f3ff 100%);border:1px solid #e8e0f2;border-radius:16px;overflow:hidden;box-shadow:0 10px 26px rgba(42,23,56,.08);transition:all .2s ease}
+.plaidact-fcd-list-card{background:linear-gradient(150deg,#fff 0%,#f8f3ff 100%);border:1px solid #e8e0f2;border-radius:14px;overflow:hidden;box-shadow:0 8px 20px rgba(42,23,56,.08);transition:all .2s ease}
 .plaidact-fcd-list-card.is-active{background:linear-gradient(145deg,#efe3ff 0%,#e2d0fb 100%);border:2px solid #6330b0;box-shadow:0 0 0 3px rgba(99,48,176,.25),0 16px 34px rgba(67,30,112,.28);transform:translateY(-2px)}
 .plaidact-fcd-current-list{display:flex;align-items:baseline;gap:.5rem;margin-top:1rem;padding:.7rem .95rem;border:1px solid #ddc9f0;border-radius:12px;background:linear-gradient(120deg,#f8f3fe,#fff)}
 .plaidact-fcd-current-list__label{font-size:.84rem;font-weight:700;color:#614183;text-transform:uppercase;letter-spacing:.03em}
-.plaidact-fcd-list-image{display:flex;align-items:center;justify-content:center;width:100%;height:180px;object-fit:cover;background:#f2edf8;color:var(--plaid-purple);font-weight:800}
-.plaidact-fcd-list-card__body{padding:.8rem}
-.plaidact-fcd-list-card h4{margin:0 0 .4rem;font-size:1.05rem}
+.plaidact-fcd-list-image{display:flex;align-items:center;justify-content:center;width:100%;height:140px;object-fit:cover;background:#f2edf8;color:var(--plaid-purple);font-weight:800}
+.plaidact-fcd-list-card__body{padding:.65rem}
+.plaidact-fcd-list-card h4{margin:0 0 .35rem;font-size:1rem}
 .plaidact-fcd-list-card h4 a{text-decoration:none;color:var(--plaid-purple)}
-.plaidact-fcd-list-card p{margin:0 0 .65rem;color:#403053;font-size:.92rem}
+.plaidact-fcd-list-card p{margin:0 0 .45rem;color:#403053;font-size:.88rem}
 .plaidact-fcd-btn{display:inline-flex;align-items:center;gap:.35rem;background:var(--plaid-purple);color:#fff;border-radius:999px;padding:.5rem .9rem;text-decoration:none;font-weight:700}
 .plaidact-fcd-btn--download{margin-top:1rem}
 .plaidact-fcd-btn--ghost{margin-top:1rem;margin-left:.55rem;background:#fff;color:var(--plaid-purple);border:1px solid #d4c2e7}
@@ -45,7 +45,7 @@
 	.plaidact-fcd-list-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 
-.plaidact-fcd-search{width:100%;margin:0;padding:.65rem .85rem;border:1px solid #cdb9e0;border-radius:11px;background:#fff}
+.plaidact-fcd-search{width:100%;min-width:240px;margin:0;padding:.85rem 1rem;border:1px solid #cdb9e0;border-radius:11px;background:#fff;font-size:1rem}
 .plaidact-fcd-list-card small{color:#5f4d74;font-weight:600}
 .plaidact-fcd-table th:first-child,
 .plaidact-fcd-table td:first-child{display:table-cell!important;min-width:130px;font-weight:700;color:#2A1738}

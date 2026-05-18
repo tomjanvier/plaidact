@@ -6,18 +6,19 @@
 	}
 
 	function buildFilteredDownloadUrl(root) {
-		var link = root.querySelector('.plaidact-fcd-filtered-download');
-		if (!link) return;
-		var baseUrl = link.dataset.baseUrl;
-		if (!baseUrl) return;
+		var links = root.querySelectorAll('.plaidact-fcd-filtered-download, .plaidact-fcd-filtered-download-xls');
+		links.forEach(function (link) {
+			var baseUrl = link.dataset.baseUrl;
+			if (!baseUrl) return;
 
-		var url = new URL(baseUrl, window.location.origin);
-		url.searchParams.set('filtered', '1');
-		url.searchParams.set('search', root.querySelector('.plaidact-fcd-search')?.value || '');
-		url.searchParams.set('custom', root.querySelector('.plaidact-fcd-select-filter[data-filter="custom"]')?.value || '');
-		url.searchParams.set('commission', root.querySelector('.plaidact-fcd-select-filter[data-filter="commission"]')?.value || '');
-		url.searchParams.set('groupe', root.querySelector('.plaidact-fcd-select-filter[data-filter="groupe"]')?.value || '');
-		link.href = url.toString();
+			var url = new URL(baseUrl, window.location.origin);
+			url.searchParams.set('filtered', '1');
+			url.searchParams.set('search', root.querySelector('.plaidact-fcd-search')?.value || '');
+			url.searchParams.set('custom', root.querySelector('.plaidact-fcd-select-filter[data-filter="custom"]')?.value || '');
+			url.searchParams.set('commission', root.querySelector('.plaidact-fcd-select-filter[data-filter="commission"]')?.value || '');
+			url.searchParams.set('groupe', root.querySelector('.plaidact-fcd-select-filter[data-filter="groupe"]')?.value || '');
+			link.href = url.toString();
+		});
 	}
 
 	function filterRows(root) {

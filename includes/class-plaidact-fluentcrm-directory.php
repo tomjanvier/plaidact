@@ -16,6 +16,8 @@ final class PlaidAct_FluentCRM_Directory {
 	private const NONCE_IMPORT          = 'plaidact_contact_directory_import';
 	private const NONCE_DOWNLOAD_PREFIX = 'plaidact_contact_directory_download_';
 	private const DOWNLOAD_ACTION       = 'plaidact_contact_directory_download';
+	private const DOWNLOAD_FORMAT_CSV   = 'csv';
+	private const DOWNLOAD_FORMAT_XLS   = 'xls';
 	private const OPTION_VISIBLE_COLUMNS = 'plaidact_contact_directory_visible_columns';
 
 	private static ?PlaidAct_FluentCRM_Directory $instance = null;
@@ -101,7 +103,10 @@ final class PlaidAct_FluentCRM_Directory {
 						<p><?php echo esc_html( $list['description'] ); ?></p>
 						<p><strong><?php echo esc_html__( 'Contacts :', 'plaidact-breves-feed' ); ?></strong> <?php echo esc_html( (string) count( $list['contacts'] ) ); ?></p>
 						<p><strong><?php echo esc_html__( 'Dernière mise à jour :', 'plaidact-breves-feed' ); ?></strong> <?php echo esc_html( ! empty( $list['updated_at'] ) ? wp_date( 'd/m/Y H:i', (int) $list['updated_at'] ) : '—' ); ?></p>
-						<p><a class="button button-secondary" href="<?php echo esc_url( add_query_arg( array( 'action' => self::DOWNLOAD_ACTION, 'list_id' => (int) $list['id'], 'nonce' => wp_create_nonce( self::NONCE_DOWNLOAD_PREFIX . $list['id'] ) ), admin_url( 'admin-post.php' ) ) ); ?>"><?php echo esc_html__( 'Télécharger cette liste (CSV)', 'plaidact-breves-feed' ); ?></a></p>
+						<p>
+							<a class="button button-secondary" href="<?php echo esc_url( add_query_arg( array( 'action' => self::DOWNLOAD_ACTION, 'list_id' => (int) $list['id'], 'format' => self::DOWNLOAD_FORMAT_CSV, 'nonce' => wp_create_nonce( self::NONCE_DOWNLOAD_PREFIX . $list['id'] ) ), admin_url( 'admin-post.php' ) ) ); ?>"><?php echo esc_html__( 'Télécharger cette liste (CSV)', 'plaidact-breves-feed' ); ?></a>
+							<a class="button button-secondary" href="<?php echo esc_url( add_query_arg( array( 'action' => self::DOWNLOAD_ACTION, 'list_id' => (int) $list['id'], 'format' => self::DOWNLOAD_FORMAT_XLS, 'nonce' => wp_create_nonce( self::NONCE_DOWNLOAD_PREFIX . $list['id'] ) ), admin_url( 'admin-post.php' ) ) ); ?>"><?php echo esc_html__( 'Télécharger cette liste (XLS)', 'plaidact-breves-feed' ); ?></a>
+						</p>
 						<form method="post" style="margin-top:8px;">
 							<?php wp_nonce_field( self::NONCE_IMPORT ); ?>
 							<input type="hidden" name="plaidact_contact_action" value="update_list_meta" />
@@ -110,6 +115,8 @@ final class PlaidAct_FluentCRM_Directory {
 							<p><label><strong><?php echo esc_html__( 'Libellé colonne personnalisée', 'plaidact-breves-feed' ); ?></strong><br /><input type="text" class="regular-text" name="column_label" value="<?php echo esc_attr( (string) $list['column_label'] ); ?>" required /></label></p>
 							<p><label><strong><?php echo esc_html__( 'Description', 'plaidact-breves-feed' ); ?></strong><br /><textarea class="large-text" rows="2" name="description"><?php echo esc_textarea( (string) ( $list['description'] ?? '' ) ); ?></textarea></label></p>
 							<p><label><strong><?php echo esc_html__( 'Image (URL)', 'plaidact-breves-feed' ); ?></strong><br /><input type="url" class="regular-text" name="image_url" value="<?php echo esc_attr( (string) ( $list['image_url'] ?? '' ) ); ?>" placeholder="https://..." /></label></p>
+							<p><label><strong><?php echo esc_html__( 'Logo export XLS (URL)', 'plaidact-breves-feed' ); ?></strong><br /><input type="url" class="regular-text" name="export_logo_url" value="<?php echo esc_attr( (string) ( $list['export_logo_url'] ?? '' ) ); ?>" placeholder="https://..." /></label></p>
+							<p><label><strong><?php echo esc_html__( 'Couleur principale export XLS', 'plaidact-breves-feed' ); ?></strong><br /><input type="text" class="regular-text" name="export_primary_color" value="<?php echo esc_attr( (string) ( $list['export_primary_color'] ?? '#2A1738' ) ); ?>" placeholder="#2A1738" /></label></p>
 							<?php submit_button( __( 'Mettre à jour la liste', 'plaidact-breves-feed' ), 'secondary', 'submit', false ); ?>
 						</form>
 						<form method="post" enctype="multipart/form-data" style="margin-top:8px;">
@@ -151,6 +158,8 @@ final class PlaidAct_FluentCRM_Directory {
 		$column_label = isset( $_POST['column_label'] ) ? sanitize_text_field( wp_unslash( $_POST['column_label'] ) ) : '';
 		$description  = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
 		$image_url    = isset( $_POST['image_url'] ) ? esc_url_raw( wp_unslash( $_POST['image_url'] ) ) : '';
+		$export_logo_url = isset( $_POST['export_logo_url'] ) ? esc_url_raw( wp_unslash( $_POST['export_logo_url'] ) ) : '';
+		$export_primary_color = isset( $_POST['export_primary_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['export_primary_color'] ) ) : '';
 		if ( '' === $name || '' === $column_label ) {
 			return;
 		}
@@ -174,6 +183,8 @@ final class PlaidAct_FluentCRM_Directory {
 		$column_label = isset( $_POST['column_label'] ) ? sanitize_text_field( wp_unslash( $_POST['column_label'] ) ) : '';
 		$description  = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
 		$image_url    = isset( $_POST['image_url'] ) ? esc_url_raw( wp_unslash( $_POST['image_url'] ) ) : '';
+		$export_logo_url = isset( $_POST['export_logo_url'] ) ? esc_url_raw( wp_unslash( $_POST['export_logo_url'] ) ) : '';
+		$export_primary_color = isset( $_POST['export_primary_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['export_primary_color'] ) ) : '';
 		if ( $list_id < 1 || '' === $name || '' === $column_label ) {
 			return;
 		}
@@ -186,6 +197,8 @@ final class PlaidAct_FluentCRM_Directory {
 			$list['column_label'] = $column_label;
 			$list['description']  = $description;
 			$list['image_url']    = $image_url;
+			$list['export_logo_url'] = $export_logo_url;
+			$list['export_primary_color'] = $export_primary_color ?: '#2A1738';
 			$list['updated_at'] = time();
 			break;
 		}
@@ -378,6 +391,7 @@ final class PlaidAct_FluentCRM_Directory {
 				array(
 					'action'  => self::DOWNLOAD_ACTION,
 					'list_id' => (int) $current['id'],
+					'format'  => self::DOWNLOAD_FORMAT_CSV,
 					'nonce'   => wp_create_nonce( self::NONCE_DOWNLOAD_PREFIX . $current['id'] ),
 				),
 				admin_url( 'admin-post.php' )
@@ -391,8 +405,9 @@ final class PlaidAct_FluentCRM_Directory {
 				<p><?php echo esc_html__( 'Choisissez une liste, recherchez un contact et exportez le tableau en CSV.', 'plaidact-breves-feed' ); ?></p>
 			</div>
 			<?php if ( null !== $download_url ) : ?>
-				<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger toute la liste', 'plaidact-breves-feed' ); ?></a>
+				<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger toute la liste (CSV)', 'plaidact-breves-feed' ); ?></a>
 				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost plaidact-fcd-filtered-download" data-base-url="<?php echo esc_url( $download_url ); ?>" href="<?php echo esc_url( add_query_arg( 'filtered', '1', $download_url ) ); ?>"><?php echo esc_html__( 'Télécharger le CSV filtré', 'plaidact-breves-feed' ); ?></a>
+				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost plaidact-fcd-filtered-download-xls" data-base-url="<?php echo esc_url( add_query_arg( 'format', self::DOWNLOAD_FORMAT_XLS, $download_url ) ); ?>" href="<?php echo esc_url( add_query_arg( array( 'format' => self::DOWNLOAD_FORMAT_XLS, 'filtered' => '1' ), $download_url ) ); ?>"><?php echo esc_html__( 'Télécharger le XLS filtré', 'plaidact-breves-feed' ); ?></a>
 			<?php endif; ?>
 			<?php if ( ! $show_all_lists ) : ?>
 				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost" href="<?php echo esc_url( remove_query_arg( array( 'list', 'list_id' ) ) ); ?>"><?php echo esc_html__( 'Retour à la liste complète', 'plaidact-breves-feed' ); ?></a>
@@ -471,8 +486,7 @@ final class PlaidAct_FluentCRM_Directory {
 		if ( null === $list || ! wp_verify_nonce( $nonce, self::NONCE_DOWNLOAD_PREFIX . $list_id ) ) {
 			wp_die( esc_html__( 'Lien de téléchargement invalide.', 'plaidact-breves-feed' ) );
 		}
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename=contacts-' . $list_id . '.csv' );
+		$format = isset( $_GET['format'] ) ? sanitize_key( wp_unslash( $_GET['format'] ) ) : self::DOWNLOAD_FORMAT_CSV;
 		$contacts = $list['contacts'];
 		$filtered = isset( $_GET['filtered'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['filtered'] ) );
 		if ( $filtered ) {
@@ -482,6 +496,11 @@ final class PlaidAct_FluentCRM_Directory {
 			$commission = isset( $_GET['commission'] ) ? sanitize_text_field( wp_unslash( $_GET['commission'] ) ) : '';
 			$contacts = $this->filter_contacts_for_download( $contacts, $search, $custom, $groupe, $commission );
 		}
+		if ( self::DOWNLOAD_FORMAT_XLS === $format ) {
+			$this->render_xls_download( $list, $contacts, $list_id );
+		}
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=contacts-' . $list_id . '.csv' );
 		$output = fopen( 'php://output', 'w' );
 		fputcsv( $output, array( 'Nom', 'Prénom', $list['column_label'], 'Institution', 'Groupe politique', 'Commission', 'Email', 'Notes' ) );
 		foreach ( $contacts as $contact ) {
@@ -500,6 +519,36 @@ final class PlaidAct_FluentCRM_Directory {
 			);
 		}
 		fclose( $output );
+		exit;
+	}
+
+	private function render_xls_download( array $list, array $contacts, int $list_id ): void {
+		$primary_color = ! empty( $list['export_primary_color'] ) ? sanitize_hex_color( (string) $list['export_primary_color'] ) : '#2A1738';
+		if ( ! $primary_color ) {
+			$primary_color = '#2A1738';
+		}
+		header( 'Content-Type: application/vnd.ms-excel; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=contacts-' . $list_id . '.xls' );
+		echo '<html><head><meta charset="utf-8"></head><body>';
+		echo '<table border="1">';
+		if ( ! empty( $list['export_logo_url'] ) ) {
+			echo '<tr><td colspan="8"><img src="' . esc_url( (string) $list['export_logo_url'] ) . '" alt="" style="max-height:60px;" /></td></tr>';
+		}
+		echo '<tr><td colspan="8" style="background:' . esc_attr( $primary_color ) . ';color:#ffffff;font-weight:bold;font-size:18px;">' . esc_html( (string) $list['name'] ) . '</td></tr>';
+		echo '<tr><th>Nom</th><th>Prénom</th><th>' . esc_html( (string) $list['column_label'] ) . '</th><th>Institution</th><th>Groupe politique</th><th>Commission</th><th>Email</th><th>Notes</th></tr>';
+		foreach ( $contacts as $contact ) {
+			echo '<tr>';
+			echo '<td>' . esc_html( (string) ( $contact['nom'] ?? '' ) ) . '</td>';
+			echo '<td>' . esc_html( (string) ( $contact['prenom'] ?? '' ) ) . '</td>';
+			echo '<td>' . esc_html( (string) ( $contact['custom'] ?? '' ) ) . '</td>';
+			echo '<td>' . esc_html( (string) ( $contact['institution'] ?? '' ) ) . '</td>';
+			echo '<td>' . esc_html( (string) ( $contact['groupe'] ?? '' ) ) . '</td>';
+			echo '<td>' . esc_html( (string) ( $contact['commission'] ?? '' ) ) . '</td>';
+			echo '<td>' . esc_html( (string) ( $contact['email'] ?? '' ) ) . '</td>';
+			echo '<td>' . esc_html( (string) ( $contact['notes'] ?? '' ) ) . '</td>';
+			echo '</tr>';
+		}
+		echo '</table></body></html>';
 		exit;
 	}
 
