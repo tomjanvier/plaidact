@@ -17,6 +17,7 @@ final class PlaidAct_FluentCRM_Directory {
 	private const NONCE_DOWNLOAD_PREFIX = 'plaidact_contact_directory_download_';
 	private const DOWNLOAD_ACTION       = 'plaidact_contact_directory_download';
 	private const OPTION_VISIBLE_COLUMNS = 'plaidact_contact_directory_visible_columns';
+	private const OPTION_EXPORT_BRANDING = 'plaidact_contact_directory_export_branding';
 
 	private static ?PlaidAct_FluentCRM_Directory $instance = null;
 
@@ -101,7 +102,7 @@ final class PlaidAct_FluentCRM_Directory {
 						<p><?php echo esc_html( $list['description'] ); ?></p>
 						<p><strong><?php echo esc_html__( 'Contacts :', 'plaidact-breves-feed' ); ?></strong> <?php echo esc_html( (string) count( $list['contacts'] ) ); ?></p>
 						<p><strong><?php echo esc_html__( 'Dernière mise à jour :', 'plaidact-breves-feed' ); ?></strong> <?php echo esc_html( ! empty( $list['updated_at'] ) ? wp_date( 'd/m/Y H:i', (int) $list['updated_at'] ) : '—' ); ?></p>
-						<p><a class="button button-secondary" href="<?php echo esc_url( add_query_arg( array( 'action' => self::DOWNLOAD_ACTION, 'list_id' => (int) $list['id'], 'nonce' => wp_create_nonce( self::NONCE_DOWNLOAD_PREFIX . $list['id'] ) ), admin_url( 'admin-post.php' ) ) ); ?>"><?php echo esc_html__( 'Télécharger cette liste (CSV)', 'plaidact-breves-feed' ); ?></a></p>
+						<p><a class="button button-secondary" href="<?php echo esc_url( add_query_arg( array( 'action' => self::DOWNLOAD_ACTION, 'list_id' => (int) $list['id'], 'format' => 'csv', 'nonce' => wp_create_nonce( self::NONCE_DOWNLOAD_PREFIX . $list['id'] ) ), admin_url( 'admin-post.php' ) ) ); ?>"><?php echo esc_html__( 'Télécharger cette liste (CSV)', 'plaidact-breves-feed' ); ?></a></p>
 						<form method="post" style="margin-top:8px;">
 							<?php wp_nonce_field( self::NONCE_IMPORT ); ?>
 							<input type="hidden" name="plaidact_contact_action" value="update_list_meta" />
@@ -110,6 +111,9 @@ final class PlaidAct_FluentCRM_Directory {
 							<p><label><strong><?php echo esc_html__( 'Libellé colonne personnalisée', 'plaidact-breves-feed' ); ?></strong><br /><input type="text" class="regular-text" name="column_label" value="<?php echo esc_attr( (string) $list['column_label'] ); ?>" required /></label></p>
 							<p><label><strong><?php echo esc_html__( 'Description', 'plaidact-breves-feed' ); ?></strong><br /><textarea class="large-text" rows="2" name="description"><?php echo esc_textarea( (string) ( $list['description'] ?? '' ) ); ?></textarea></label></p>
 							<p><label><strong><?php echo esc_html__( 'Image (URL)', 'plaidact-breves-feed' ); ?></strong><br /><input type="url" class="regular-text" name="image_url" value="<?php echo esc_attr( (string) ( $list['image_url'] ?? '' ) ); ?>" placeholder="https://..." /></label></p>
+							<p><label><input type="checkbox" name="show_groupe" value="1" <?php checked( ! isset( $list['show_groupe'] ) || ! empty( $list['show_groupe'] ) ); ?> /> <?php echo esc_html__( 'Afficher la colonne Groupe politique', 'plaidact-breves-feed' ); ?></label></p>
+							<p><label><input type="checkbox" name="show_commission" value="1" <?php checked( ! isset( $list['show_commission'] ) || ! empty( $list['show_commission'] ) ); ?> /> <?php echo esc_html__( 'Afficher la colonne Commission', 'plaidact-breves-feed' ); ?></label></p>
+							<p><label><input type="checkbox" name="show_institution" value="1" <?php checked( ! empty( $list['show_institution'] ) ); ?> /> <?php echo esc_html__( 'Afficher la colonne Institution', 'plaidact-breves-feed' ); ?></label></p>
 							<?php submit_button( __( 'Mettre à jour la liste', 'plaidact-breves-feed' ), 'secondary', 'submit', false ); ?>
 						</form>
 						<form method="post" enctype="multipart/form-data" style="margin-top:8px;">
@@ -122,6 +126,15 @@ final class PlaidAct_FluentCRM_Directory {
 					</div>
 				<?php endforeach; ?>
 			<?php endif; ?>
+			<h2><?php echo esc_html__( 'Branding export', 'plaidact-breves-feed' ); ?></h2>
+			<?php $branding = $this->get_export_branding(); ?>
+			<form method="post">
+				<?php wp_nonce_field( self::NONCE_IMPORT ); ?>
+				<input type="hidden" name="plaidact_contact_action" value="update_export_branding" />
+				<p><label><strong><?php echo esc_html__( 'Nom de marque', 'plaidact-breves-feed' ); ?></strong><br /><input type="text" class="regular-text" name="brand_name" value="<?php echo esc_attr( $branding['brand_name'] ); ?>" /></label></p>
+				<p><label><strong><?php echo esc_html__( 'Logo (URL)', 'plaidact-breves-feed' ); ?></strong><br /><input type="url" class="regular-text" name="logo_url" value="<?php echo esc_attr( $branding['logo_url'] ); ?>" /></label></p>
+				<?php submit_button( __( 'Enregistrer le branding export', 'plaidact-breves-feed' ), 'secondary' ); ?>
+			</form>
 		</div>
 		<?php
 	}
@@ -143,6 +156,9 @@ final class PlaidAct_FluentCRM_Directory {
 		}
 		if ( 'update_visible_columns' === $action ) {
 			$this->update_visible_columns_from_request();
+		}
+		if ( 'update_export_branding' === $action ) {
+			$this->update_export_branding_from_request();
 		}
 	}
 
@@ -187,6 +203,9 @@ final class PlaidAct_FluentCRM_Directory {
 			$list['description']  = $description;
 			$list['image_url']    = $image_url;
 			$list['updated_at'] = time();
+			$list['show_groupe'] = isset( $_POST['show_groupe'] ) ? 1 : 0;
+			$list['show_commission'] = isset( $_POST['show_commission'] ) ? 1 : 0;
+			$list['show_institution'] = isset( $_POST['show_institution'] ) ? 1 : 0;
 			break;
 		}
 		unset( $list );
@@ -290,12 +309,26 @@ final class PlaidAct_FluentCRM_Directory {
 				'groupe'       => sanitize_text_field( (string) ( $normalized_data['groupe politique'] ?? '' ) ),
 				'commission'   => $this->normalize_commission_value( (string) ( $normalized_data['commission'] ?? '' ) ),
 				'social_links' => $this->parse_social_links( $normalized_data ),
-				'email'        => sanitize_email( (string) ( $normalized_data['email'] ?? '' ) ),
+				'email'        => $this->normalize_email_value( (string) ( $normalized_data['email'] ?? '' ) ),
 				'notes'        => sanitize_textarea_field( (string) ( $normalized_data['notes'] ?? '' ) ),
 			);
 		}
 		fclose( $handle );
 		return $rows;
+	}
+	private function normalize_email_value( string $value ): string {
+		$parts = preg_split( '/\s*[|;,]\s*/u', $value );
+		if ( ! is_array( $parts ) ) {
+			return sanitize_email( $value );
+		}
+		$clean = array();
+		foreach ( $parts as $part ) {
+			$email = sanitize_email( trim( (string) $part ) );
+			if ( '' !== $email ) {
+				$clean[ mb_strtolower( $email ) ] = $email;
+			}
+		}
+		return implode( ' | ', array_values( $clean ) );
 	}
 
 	private function detect_csv_delimiter( $handle ): string {
@@ -433,6 +466,9 @@ final class PlaidAct_FluentCRM_Directory {
 		$commission_values = $this->get_unique_contact_values( $displayed_contacts, 'commission' );
 		$groupe_values     = $this->get_unique_contact_values( $displayed_contacts, 'groupe' );
 		$visible_columns   = $this->get_visible_columns();
+		$show_groupe_col = in_array( 'groupe', $visible_columns, true ) && ( $show_all_lists || null === $current || ! isset( $current['show_groupe'] ) || ! empty( $current['show_groupe'] ) );
+		$show_commission_col = in_array( 'commission', $visible_columns, true ) && ( $show_all_lists || null === $current || ! isset( $current['show_commission'] ) || ! empty( $current['show_commission'] ) );
+		$show_institution_col = $show_all_lists || ( null !== $current && ! empty( $current['show_institution'] ) );
 
 		$download_url = null;
 		if ( ! $show_all_lists && null !== $current ) {
@@ -453,7 +489,9 @@ final class PlaidAct_FluentCRM_Directory {
 				<p><?php echo esc_html__( 'Choisissez une liste, recherchez un contact et exportez le tableau en CSV.', 'plaidact-breves-feed' ); ?></p>
 			</div>
 			<?php if ( null !== $download_url ) : ?>
-				<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( $download_url ); ?>"><?php echo esc_html__( 'Télécharger toute la liste', 'plaidact-breves-feed' ); ?></a>
+				<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( add_query_arg( 'format', 'csv', $download_url ) ); ?>"><?php echo esc_html__( 'Télécharger CSV', 'plaidact-breves-feed' ); ?></a>
+				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost" href="<?php echo esc_url( add_query_arg( 'format', 'xls', $download_url ) ); ?>"><?php echo esc_html__( 'Télécharger Excel', 'plaidact-breves-feed' ); ?></a>
+				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost" href="<?php echo esc_url( add_query_arg( 'format', 'ods', $download_url ) ); ?>"><?php echo esc_html__( 'Télécharger ODS', 'plaidact-breves-feed' ); ?></a>
 				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost plaidact-fcd-filtered-download" data-base-url="<?php echo esc_url( $download_url ); ?>" href="<?php echo esc_url( add_query_arg( 'filtered', '1', $download_url ) ); ?>"><?php echo esc_html__( 'Télécharger le CSV filtré', 'plaidact-breves-feed' ); ?></a>
 			<?php endif; ?>
 			<?php if ( ! $show_all_lists ) : ?>
@@ -479,8 +517,9 @@ final class PlaidAct_FluentCRM_Directory {
 						<th><?php echo esc_html__( 'Prénom', 'plaidact-breves-feed' ); ?></th>
 						<th><?php echo esc_html__( 'Liste', 'plaidact-breves-feed' ); ?></th>
 						<th><?php echo esc_html__( 'Email', 'plaidact-breves-feed' ); ?></th>
-						<?php if ( in_array( 'groupe', $visible_columns, true ) ) : ?><th data-column="groupe"><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
-						<?php if ( in_array( 'commission', $visible_columns, true ) ) : ?><th data-column="commission"><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
+						<?php if ( $show_groupe_col ) : ?><th data-column="groupe"><?php echo esc_html__( 'Groupe politique', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
+						<?php if ( $show_commission_col ) : ?><th data-column="commission"><?php echo esc_html__( 'Commission', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
+						<?php if ( $show_institution_col ) : ?><th data-column="institution"><?php echo esc_html__( 'Institution', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
 						<?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><th data-column="custom"><?php echo esc_html__( 'Fonction', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
 						<?php if ( in_array( 'social', $visible_columns, true ) ) : ?><th data-column="social"><?php echo esc_html__( 'Réseaux sociaux', 'plaidact-breves-feed' ); ?></th><?php endif; ?>
 						<th><?php echo esc_html__( 'Notes', 'plaidact-breves-feed' ); ?></th>
@@ -488,8 +527,9 @@ final class PlaidAct_FluentCRM_Directory {
 					<tr class="plaidact-fcd-filter-row">
 						<th><input type="search" class="plaidact-fcd-search" placeholder="<?php echo esc_attr__( 'Rechercher…', 'plaidact-breves-feed' ); ?>" /></th>
 						<th></th><th></th><th></th>
-						<?php if ( in_array( 'groupe', $visible_columns, true ) ) : ?><th><select class="plaidact-fcd-select-filter" data-filter="groupe"><option value=""><?php echo esc_html__( 'Tous', 'plaidact-breves-feed' ); ?></option><?php foreach ( $groupe_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th><?php endif; ?>
-						<?php if ( in_array( 'commission', $visible_columns, true ) ) : ?><th><select class="plaidact-fcd-select-filter" data-filter="commission"><option value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></option><?php foreach ( $commission_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th><?php endif; ?>
+						<?php if ( $show_groupe_col ) : ?><th><select class="plaidact-fcd-select-filter" data-filter="groupe"><option value=""><?php echo esc_html__( 'Tous', 'plaidact-breves-feed' ); ?></option><?php foreach ( $groupe_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th><?php endif; ?>
+						<?php if ( $show_commission_col ) : ?><th><select class="plaidact-fcd-select-filter" data-filter="commission"><option value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></option><?php foreach ( $commission_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th><?php endif; ?>
+						<?php if ( $show_institution_col ) : ?><th></th><?php endif; ?>
 						<?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><th><select class="plaidact-fcd-select-filter" data-filter="custom"><option value=""><?php echo esc_html__( 'Toutes', 'plaidact-breves-feed' ); ?></option><?php foreach ( $custom_values as $value ) : ?><option value="<?php echo esc_attr( strtolower( $value ) ); ?>"><?php echo esc_html( $value ); ?></option><?php endforeach; ?></select></th><?php endif; ?>
 						<?php if ( in_array( 'social', $visible_columns, true ) ) : ?><th></th><?php endif; ?>
 						<th></th>
@@ -498,7 +538,7 @@ final class PlaidAct_FluentCRM_Directory {
 				<tbody>
 				<?php foreach ( $displayed_contacts as $contact ) : ?>
 					<tr data-custom="<?php echo esc_attr( strtolower( (string) ( $contact['custom'] ?? '' ) ) ); ?>" data-groupe="<?php echo esc_attr( strtolower( (string) ( $contact['groupe'] ?? '' ) ) ); ?>" data-commission="<?php echo esc_attr( strtolower( (string) ( $contact['commission'] ?? '' ) ) ); ?>">
-						<td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $contact['list_name'] ?? '' ); ?></td><td><?php echo esc_html( $contact['email'] ); ?></td><?php if ( in_array( 'groupe', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['groupe'] ?? '' ); ?></td><?php endif; ?><?php if ( in_array( 'commission', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['commission'] ?? '' ); ?></td><?php endif; ?><?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['custom'] ); ?></td><?php endif; ?><?php if ( in_array( 'social', $visible_columns, true ) ) : ?><td><?php echo $this->render_social_links( $contact['social_links'] ?? array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td><?php endif; ?><td><?php echo esc_html( $contact['notes'] ?? '' ); ?></td>
+						<td><?php echo esc_html( $contact['nom'] ); ?></td><td><?php echo esc_html( $contact['prenom'] ); ?></td><td><?php echo esc_html( $contact['list_name'] ?? '' ); ?></td><td><?php echo nl2br( esc_html( str_replace( '|', "\n", (string) ( $contact['email'] ?? '' ) ) ) ); ?></td><?php if ( $show_groupe_col ) : ?><td><?php echo esc_html( $contact['groupe'] ?? '' ); ?></td><?php endif; ?><?php if ( $show_commission_col ) : ?><td><?php echo esc_html( $contact['commission'] ?? '' ); ?></td><?php endif; ?><?php if ( $show_institution_col ) : ?><td><?php echo esc_html( $contact['institution'] ?? '' ); ?></td><?php endif; ?><?php if ( in_array( 'custom', $visible_columns, true ) ) : ?><td><?php echo esc_html( $contact['custom'] ); ?></td><?php endif; ?><?php if ( in_array( 'social', $visible_columns, true ) ) : ?><td><?php echo $this->render_social_links( $contact['social_links'] ?? array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td><?php endif; ?><td><?php echo esc_html( $contact['notes'] ?? '' ); ?></td>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>
@@ -529,12 +569,11 @@ final class PlaidAct_FluentCRM_Directory {
 	public function handle_csv_download(): void {
 		$list_id = isset( $_GET['list_id'] ) ? absint( wp_unslash( $_GET['list_id'] ) ) : 0;
 		$nonce   = isset( $_GET['nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['nonce'] ) ) : '';
+		$format  = isset( $_GET['format'] ) ? sanitize_key( wp_unslash( $_GET['format'] ) ) : 'csv';
 		$list    = $this->get_list_by_id( $list_id );
 		if ( null === $list || ! wp_verify_nonce( $nonce, self::NONCE_DOWNLOAD_PREFIX . $list_id ) ) {
 			wp_die( esc_html__( 'Lien de téléchargement invalide.', 'plaidact-breves-feed' ) );
 		}
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename=contacts-' . $list_id . '.csv' );
 		$contacts = $list['contacts'];
 		$filtered = isset( $_GET['filtered'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['filtered'] ) );
 		if ( $filtered ) {
@@ -543,6 +582,20 @@ final class PlaidAct_FluentCRM_Directory {
 			$groupe = isset( $_GET['groupe'] ) ? sanitize_text_field( wp_unslash( $_GET['groupe'] ) ) : '';
 			$commission = isset( $_GET['commission'] ) ? sanitize_text_field( wp_unslash( $_GET['commission'] ) ) : '';
 			$contacts = $this->filter_contacts_for_download( $contacts, $search, $custom, $groupe, $commission );
+		}
+		$filename = 'contacts-' . $list_id;
+		if ( 'xls' === $format ) {
+			header( 'Content-Type: application/vnd.ms-excel; charset=utf-8' );
+			header( 'Content-Disposition: attachment; filename=' . $filename . '.xls' );
+			$this->render_excel_like_export( $list, $contacts );
+			exit;
+		}
+		if ( 'ods' === $format ) {
+			header( 'Content-Type: application/vnd.oasis.opendocument.spreadsheet; charset=utf-8' );
+			header( 'Content-Disposition: attachment; filename=' . $filename . '.ods' );
+		} else {
+			header( 'Content-Type: text/csv; charset=utf-8' );
+			header( 'Content-Disposition: attachment; filename=' . $filename . '.csv' );
 		}
 		$output = fopen( 'php://output', 'w' );
 		fputcsv( $output, array( 'Nom', 'Prénom', $list['column_label'], 'Institution', 'Groupe politique', 'Commission', 'Email', 'Notes' ) );
@@ -563,6 +616,31 @@ final class PlaidAct_FluentCRM_Directory {
 		}
 		fclose( $output );
 		exit;
+	}
+	private function render_excel_like_export( array $list, array $contacts ): void {
+		$branding = $this->get_export_branding();
+		echo '<table border="1"><tr><td colspan="8"><strong>' . esc_html( $branding['brand_name'] ) . '</strong></td></tr>';
+		if ( '' !== $branding['logo_url'] ) {
+			echo '<tr><td colspan="8">' . esc_html( $branding['logo_url'] ) . '</td></tr>';
+		}
+		echo '<tr><th>Nom</th><th>Prénom</th><th>' . esc_html( $list['column_label'] ) . '</th><th>Institution</th><th>Groupe politique</th><th>Commission</th><th>Email</th><th>Notes</th></tr>';
+		foreach ( $contacts as $contact ) {
+			echo '<tr><td>' . esc_html( (string) ( $contact['nom'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $contact['prenom'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $contact['custom'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $contact['institution'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $contact['groupe'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $contact['commission'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $contact['email'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $contact['notes'] ?? '' ) ) . '</td></tr>';
+		}
+		echo '</table>';
+	}
+	private function get_export_branding(): array {
+		$value = get_option( self::OPTION_EXPORT_BRANDING, array() );
+		return array(
+			'brand_name' => sanitize_text_field( (string) ( $value['brand_name'] ?? 'PLAID·ACT' ) ),
+			'logo_url' => esc_url_raw( (string) ( $value['logo_url'] ?? '' ) ),
+		);
+	}
+	private function update_export_branding_from_request(): void {
+		update_option( self::OPTION_EXPORT_BRANDING, array(
+			'brand_name' => isset( $_POST['brand_name'] ) ? sanitize_text_field( wp_unslash( $_POST['brand_name'] ) ) : 'PLAID·ACT',
+			'logo_url' => isset( $_POST['logo_url'] ) ? esc_url_raw( wp_unslash( $_POST['logo_url'] ) ) : '',
+		), false );
 	}
 
 	private function filter_contacts_for_download( array $contacts, string $search, string $custom, string $groupe, string $commission ): array {
