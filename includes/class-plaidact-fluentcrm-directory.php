@@ -233,7 +233,20 @@ final class PlaidAct_FluentCRM_Directory {
 			return array();
 		}
 		$rows    = array();
-		$headers = fgetcsv( $handle );
+		$delimiter = $this->detect_csv_delimiter( $handle );
+		$line_number = 0;
+		$headers = null;
+		while ( ( $candidate = fgetcsv( $handle, 0, $delimiter ) ) !== false ) {
+			$line_number++;
+			if ( $line_number <= 3 ) {
+				continue;
+			}
+			if ( ! is_array( $candidate ) ) {
+				continue;
+			}
+			$headers = $candidate;
+			break;
+		}
 		if ( ! is_array( $headers ) ) {
 			fclose( $handle );
 			return array();
@@ -245,7 +258,7 @@ final class PlaidAct_FluentCRM_Directory {
 		}, $headers );
 		$max_rows = 5000;
 		$row_count = 0;
-		while ( ( $line = fgetcsv( $handle ) ) !== false ) {
+		while ( ( $line = fgetcsv( $handle, 0, $delimiter ) ) !== false ) {
 			$row_count++;
 			if ( $row_count > $max_rows ) {
 				break;
@@ -254,20 +267,69 @@ final class PlaidAct_FluentCRM_Directory {
 			if ( ! is_array( $data ) ) {
 				continue;
 			}
+			$row_values = array_filter(
+				array_map(
+					static function( $value ) {
+						return trim( (string) $value );
+					},
+					$line
+				),
+				static function( $value ) {
+					return '' !== $value;
+				}
+			);
+			if ( empty( $row_values ) ) {
+				continue;
+			}
+			$normalized_data = $this->normalize_contact_row_keys( $data );
 			$rows[] = array(
-				'nom'          => sanitize_text_field( (string) ( $data['Nom'] ?? $data['nom'] ?? ( $line[0] ?? '' ) ) ),
-				'prenom'       => sanitize_text_field( (string) ( $data['Prénom'] ?? $data['Prenom'] ?? $data['prenom'] ?? '' ) ),
-				'custom'       => sanitize_text_field( (string) ( $data['Fonction'] ?? $data['Groupe politique'] ?? '' ) ),
-				'institution'  => sanitize_text_field( (string) ( $data['Institution'] ?? '' ) ),
-				'groupe'       => sanitize_text_field( (string) ( $data['Groupe politique'] ?? '' ) ),
-				'commission'   => $this->normalize_commission_value( (string) ( $data['Commission'] ?? '' ) ),
-				'social_links' => $this->parse_social_links( $data ),
-				'email'        => sanitize_email( (string) ( $data['Email'] ?? '' ) ),
-				'notes'        => sanitize_textarea_field( (string) ( $data['Notes'] ?? '' ) ),
+				'nom'          => sanitize_text_field( (string) ( $normalized_data['nom'] ?? '' ) ),
+				'prenom'       => sanitize_text_field( (string) ( $normalized_data['prenom'] ?? '' ) ),
+				'custom'       => sanitize_text_field( (string) ( $normalized_data['fonction'] ?? $normalized_data['groupe politique'] ?? '' ) ),
+				'institution'  => sanitize_text_field( (string) ( $normalized_data['institution'] ?? '' ) ),
+				'groupe'       => sanitize_text_field( (string) ( $normalized_data['groupe politique'] ?? '' ) ),
+				'commission'   => $this->normalize_commission_value( (string) ( $normalized_data['commission'] ?? '' ) ),
+				'social_links' => $this->parse_social_links( $normalized_data ),
+				'email'        => sanitize_email( (string) ( $normalized_data['email'] ?? '' ) ),
+				'notes'        => sanitize_textarea_field( (string) ( $normalized_data['notes'] ?? '' ) ),
 			);
 		}
 		fclose( $handle );
 		return $rows;
+	}
+
+	private function detect_csv_delimiter( $handle ): string {
+		$position = ftell( $handle );
+		$sample   = '';
+		for ( $i = 0; $i < 6; $i++ ) {
+			$line = fgets( $handle );
+			if ( false === $line ) {
+				break;
+			}
+			$sample .= $line;
+		}
+		fseek( $handle, (int) $position );
+		$candidates = array( ',', ';', "\t", '|' );
+		$best       = ',';
+		$best_count = -1;
+		foreach ( $candidates as $candidate ) {
+			$count = substr_count( $sample, $candidate );
+			if ( $count > $best_count ) {
+				$best = $candidate;
+				$best_count = $count;
+			}
+		}
+		return $best;
+	}
+
+	private function normalize_contact_row_keys( array $data ): array {
+		$normalized = array();
+		foreach ( $data as $key => $value ) {
+			$normalized_key = sanitize_title( remove_accents( (string) $key ) );
+			$normalized_key = str_replace( '-', ' ', $normalized_key );
+			$normalized[ $normalized_key ] = $value;
+		}
+		return $normalized;
 	}
 
 
@@ -290,11 +352,11 @@ final class PlaidAct_FluentCRM_Directory {
 
 	private function parse_social_links( array $data ): array {
 		$platforms = array(
-			'x'         => $data['X'] ?? $data['Twitter'] ?? '',
-			'linkedin'  => $data['LinkedIn'] ?? '',
-			'facebook'  => $data['Facebook'] ?? '',
-			'instagram' => $data['Instagram'] ?? '',
-			'youtube'   => $data['YouTube'] ?? '',
+			'x'         => $data['x'] ?? $data['twitter'] ?? '',
+			'linkedin'  => $data['linkedin'] ?? '',
+			'facebook'  => $data['facebook'] ?? '',
+			'instagram' => $data['instagram'] ?? '',
+			'youtube'   => $data['youtube'] ?? '',
 		);
 		$links = array();
 		foreach ( $platforms as $key => $value ) {
