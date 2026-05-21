@@ -491,7 +491,6 @@ final class PlaidAct_FluentCRM_Directory {
 			<?php if ( null !== $download_url ) : ?>
 				<a class="plaidact-fcd-btn plaidact-fcd-btn--download" href="<?php echo esc_url( add_query_arg( 'format', 'csv', $download_url ) ); ?>"><?php echo esc_html__( 'Télécharger CSV', 'plaidact-breves-feed' ); ?></a>
 				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost" href="<?php echo esc_url( add_query_arg( 'format', 'xls', $download_url ) ); ?>"><?php echo esc_html__( 'Télécharger Excel', 'plaidact-breves-feed' ); ?></a>
-				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost" href="<?php echo esc_url( add_query_arg( 'format', 'ods', $download_url ) ); ?>"><?php echo esc_html__( 'Télécharger ODS', 'plaidact-breves-feed' ); ?></a>
 				<a class="plaidact-fcd-btn plaidact-fcd-btn--ghost plaidact-fcd-filtered-download" data-base-url="<?php echo esc_url( $download_url ); ?>" href="<?php echo esc_url( add_query_arg( 'filtered', '1', $download_url ) ); ?>"><?php echo esc_html__( 'Télécharger le CSV filtré', 'plaidact-breves-feed' ); ?></a>
 			<?php endif; ?>
 			<?php if ( ! $show_all_lists ) : ?>
@@ -590,14 +589,16 @@ final class PlaidAct_FluentCRM_Directory {
 			$this->render_excel_like_export( $list, $contacts );
 			exit;
 		}
-		if ( 'ods' === $format ) {
-			header( 'Content-Type: application/vnd.oasis.opendocument.spreadsheet; charset=utf-8' );
-			header( 'Content-Disposition: attachment; filename=' . $filename . '.ods' );
-		} else {
-			header( 'Content-Type: text/csv; charset=utf-8' );
-			header( 'Content-Disposition: attachment; filename=' . $filename . '.csv' );
-		}
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=' . $filename . '.csv' );
 		$output = fopen( 'php://output', 'w' );
+		$branding = $this->get_export_branding();
+		fputcsv( $output, array( 'https://plaidact.org/base-contacts-politiques/' ) );
+		fputcsv( $output, array( '' ) );
+		if ( '' !== $branding['logo_url'] ) {
+			fputcsv( $output, array( '=IMAGE("' . str_replace( '"', '""', $branding['logo_url'] ) . '")' ) );
+			fputcsv( $output, array( '' ) );
+		}
 		fputcsv( $output, array( 'Nom', 'Prénom', $list['column_label'], 'Institution', 'Groupe politique', 'Commission', 'Email', 'Notes' ) );
 		foreach ( $contacts as $contact ) {
 			fputcsv(
@@ -619,9 +620,11 @@ final class PlaidAct_FluentCRM_Directory {
 	}
 	private function render_excel_like_export( array $list, array $contacts ): void {
 		$branding = $this->get_export_branding();
-		echo '<table border="1"><tr><td colspan="8"><strong>' . esc_html( $branding['brand_name'] ) . '</strong></td></tr>';
+		echo '<table border="1">';
+		echo '<tr><td colspan="8" style="background:#2b1533;color:#ffffff;"><a href="https://plaidact.org/base-contacts-politiques/" style="color:#ffffff;text-decoration:none;">https://plaidact.org/base-contacts-politiques/</a></td></tr>';
+		echo '<tr><td colspan="8"><strong>' . esc_html( $branding['brand_name'] ) . '</strong></td></tr>';
 		if ( '' !== $branding['logo_url'] ) {
-			echo '<tr><td colspan="8">' . esc_html( $branding['logo_url'] ) . '</td></tr>';
+			echo '<tr><td colspan="8"><img src="' . esc_url( $branding['logo_url'] ) . '" alt="' . esc_attr( $branding['brand_name'] ) . '" style="max-height:80px;width:auto;" /></td></tr>';
 		}
 		echo '<tr><th>Nom</th><th>Prénom</th><th>' . esc_html( $list['column_label'] ) . '</th><th>Institution</th><th>Groupe politique</th><th>Commission</th><th>Email</th><th>Notes</th></tr>';
 		foreach ( $contacts as $contact ) {
