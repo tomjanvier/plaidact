@@ -91,6 +91,7 @@ $plaidact_logo = 'https://plaidact.org/wp-content/uploads/2026/01/Capture-decran
 											</a>
 											<div class="pa-event-meta">
 												<?php if ( ! empty( $event['lieu'] ) ) : ?><span class="pa-event-lieu"><?php echo esc_html( $event['lieu'] ); ?></span><?php endif; ?>
+												<?php if ( ! empty( $event['organization_name'] ) ) : ?><span class="pa-event-org"><?php echo esc_html( $event['organization_name'] ); ?></span><?php endif; ?>
 												<?php if ( '' !== $period ) : ?><span class="pa-event-period"><?php echo esc_html( $period ); ?></span><?php endif; ?>
 											</div>
 										</div>
