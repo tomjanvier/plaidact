@@ -51,6 +51,7 @@ final class Plugin {
 		add_action( 'admin_menu', [ __CLASS__, 'register_agenda_import_page' ] );
 		add_action( 'template_redirect', [ __CLASS__, 'maybe_serve_timeline_ical' ] );
 		add_action( 'admin_post_plaidact_import_asso', [ __CLASS__, 'handle_asso_import' ] );
+		add_action( 'admin_post_plaidact_export_asso_csv', [ __CLASS__, 'handle_asso_export_csv' ] );
 		add_action( 'admin_post_plaidact_migrate_asso_taxonomies', [ __CLASS__, 'handle_asso_taxonomy_migration' ] );
 		add_action( 'admin_post_plaidact_import_agenda', [ __CLASS__, 'handle_agenda_import' ] );
 		add_action( 'pre_get_posts', [ __CLASS__, 'include_associations_in_site_search' ] );
@@ -369,6 +370,11 @@ Linktree|https://linktr.ee/acat"',
 				</table>
 				<?php submit_button( __( 'Importer', 'plaidact-breves-feed' ) ); ?>
 			</form>
+			<p>
+				<a class="button button-secondary" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=plaidact_export_asso_csv' ), 'plaidact_export_asso_csv' ) ); ?>">
+					<?php esc_html_e( 'Exporter les entrées en CSV', 'plaidact-breves-feed' ); ?>
+				</a>
+			</p>
 
 			<hr />
 			<h2><?php esc_html_e( 'Migration des taxonomies', 'plaidact-breves-feed' ); ?></h2>
@@ -389,8 +395,8 @@ Linktree|https://linktr.ee/acat"',
 		$status = isset( $_GET['status'] ) ? sanitize_key( (string) $_GET['status'] ) : '';
 		$count  = isset( $_GET['count'] ) ? absint( $_GET['count'] ) : 0;
 		$dupes  = isset( $_GET['dupes'] ) ? absint( $_GET['dupes'] ) : 0;
-		$template_headers = implode( ',', [ 'title', 'slug', 'timeline', 'date_debut', 'date_fin', 'type_evenement', 'lieu', 'lien_evenement' ] );
-		$template_row     = 'Réunion G7,reunion-g7,geopolitique,2026-06-02,2026-06-02,ponctuels,Ottawa,https://example.org/evenement';
+		$template_headers = implode( ',', [ 'title', 'slug', 'timeline', 'date_debut', 'date_fin', 'type_evenement', 'lieu', 'nom_organisation', 'lien_evenement' ] );
+		$template_row     = 'Réunion G7,reunion-g7,geopolitique,2026-06-02,2026-06-02,ponctuels,Ottawa,PLAID·ACT,https://example.org/evenement';
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Import des événements Agenda', 'plaidact-breves-feed' ); ?></h1>
@@ -735,6 +741,7 @@ Linktree|https://linktr.ee/acat"',
 				'type'        => (string) get_post_meta( $post_id, 'type_evenement', true ),
 				'config'      => is_array( $config ) ? $config : [],
 				'lieu'        => (string) get_post_meta( $post_id, 'lieu', true ),
+				'organisation_name' => (string) get_post_meta( $post_id, 'nom_organisation', true ),
 				'mini_logo'   => (string) get_field( 'mini_logo', $post_id ),
 				'url'         => '' !== $external_link ? $external_link : get_permalink( $post_id ),
 				'is_external' => '' !== $external_link,
@@ -1285,6 +1292,82 @@ Linktree|https://linktr.ee/acat"',
 		exit;
 	}
 
+	public static function handle_asso_export_csv(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Accès refusé.', 'plaidact-breves-feed' ) );
+		}
+		check_admin_referer( 'plaidact_export_asso_csv' );
+
+		$query = new WP_Query(
+			[
+				'post_type'      => self::ASSO_POST_TYPE,
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'orderby'        => 'title',
+				'order'          => 'ASC',
+				'no_found_rows'  => true,
+			]
+		);
+
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="export-associations.csv"' );
+
+		$output = fopen( 'php://output', 'wb' );
+		if ( false === $output ) {
+			wp_die( esc_html__( 'Impossible de générer le fichier CSV.', 'plaidact-breves-feed' ) );
+		}
+
+		fputcsv( $output, self::get_asso_import_headers() );
+
+		while ( $query->have_posts() ) {
+			$query->the_post();
+			$post_id = get_the_ID();
+			$terms   = wp_get_post_terms( $post_id, self::ASSO_TAXONOMY, [ 'fields' => 'names' ] );
+			$social_links_rows = get_field( 'social_links', $post_id );
+			$social_links_lines = [];
+			if ( is_array( $social_links_rows ) ) {
+				foreach ( $social_links_rows as $row ) {
+					$label = isset( $row['label'] ) ? trim( (string) $row['label'] ) : '';
+					$url   = isset( $row['url'] ) ? trim( (string) $row['url'] ) : '';
+					if ( '' !== $label && '' !== $url ) {
+						$social_links_lines[] = $label . '|' . $url;
+					}
+				}
+			}
+
+			fputcsv(
+				$output,
+				[
+					get_the_title(),
+					get_post_field( 'post_name', $post_id ),
+					'',
+					'',
+					(string) get_field( 'url_web', $post_id ),
+					(string) get_field( 'url_don', $post_id ),
+					(string) get_field( 'url_contact', $post_id ),
+					implode( '|', is_array( $terms ) ? $terms : [] ),
+					(string) get_field( 'resume_court', $post_id ),
+					(string) get_field( 'social_facebook', $post_id ),
+					(string) get_field( 'social_x', $post_id ),
+					(string) get_field( 'social_instagram', $post_id ),
+					(string) get_field( 'social_linkedin', $post_id ),
+					(string) get_field( 'social_youtube', $post_id ),
+					(string) get_field( 'social_tiktok', $post_id ),
+					(string) get_field( 'social_twitch', $post_id ),
+					(string) get_field( 'social_whatsapp', $post_id ),
+					(string) get_field( 'social_telegram', $post_id ),
+					(string) get_field( 'social_discord', $post_id ),
+					(string) get_field( 'social_bluesky', $post_id ),
+					implode( "\n", $social_links_lines ),
+				]
+			);
+		}
+
+		wp_reset_postdata();
+		fclose( $output );
+		exit;
+	}
+
 	public static function handle_agenda_import(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Accès refusé.', 'plaidact-breves-feed' ) );
@@ -1336,6 +1419,7 @@ Linktree|https://linktr.ee/acat"',
 			update_post_meta( $post_id, 'date_fin', (string) ( $data['date_fin'] ?? '' ) );
 			update_post_meta( $post_id, 'type_evenement', (string) ( $data['type_evenement'] ?? '' ) );
 			update_post_meta( $post_id, 'lieu', (string) ( $data['lieu'] ?? '' ) );
+			update_post_meta( $post_id, 'nom_organisation', (string) ( $data['nom_organisation'] ?? '' ) );
 			update_field( 'lien_evenement', (string) ( $data['lien_evenement'] ?? '' ), $post_id );
 			self::sync_agenda_timeline_term( $post_id, (string) ( $data['timeline'] ?? '' ) );
 			$count++;
