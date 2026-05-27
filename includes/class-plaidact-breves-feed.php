@@ -55,6 +55,7 @@ final class PlaidAct_Breves_Feed {
 		global $_wp_admin_css_colors;
 		$scheme = get_user_option( 'admin_color', get_current_user_id() );
 		if ( ! is_string( $scheme ) || '' === $scheme ) {
+			update_user_option( get_current_user_id(), 'admin_color', 'fresh', true );
 			return;
 		}
 
