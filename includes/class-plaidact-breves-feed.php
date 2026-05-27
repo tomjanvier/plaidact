@@ -22,6 +22,7 @@ final class PlaidAct_Breves_Feed {
 
 	private function __construct() {
 		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
+		add_action( 'admin_init', array( $this, 'ensure_valid_admin_color_scheme' ) );
 		add_action( 'init', array( $this, 'register_breves_post_type' ), 1 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_shortcode( 'plaidact_breves', array( $this, 'render_shortcode' ) );
@@ -35,6 +36,40 @@ final class PlaidAct_Breves_Feed {
 		add_action( 'admin_post_plaidact_import_breves', array( $this, 'handle_import' ) );
 		add_action( 'save_post_breves', array( $this, 'bump_breves_cache_version' ) );
 		add_action( 'deleted_post', array( $this, 'maybe_bump_cache_for_deleted_breve' ) );
+	}
+
+	/**
+	 * WordPress 7.x Gutenberg can crash in edit-post for users with invalid/missing admin color schemes.
+	 * This guard resets those users to the default scheme before loading the editor.
+	 */
+	public function ensure_valid_admin_color_scheme(): void {
+		if ( ! is_admin() || ! is_user_logged_in() ) {
+			return;
+		}
+
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( $screen && ! in_array( $screen->base, array( 'post', 'post-new' ), true ) ) {
+			return;
+		}
+
+		global $_wp_admin_css_colors;
+		$scheme = get_user_option( 'admin_color', get_current_user_id() );
+		if ( ! is_string( $scheme ) || '' === $scheme ) {
+			return;
+		}
+
+		$registered = is_array( $_wp_admin_css_colors ) ? $_wp_admin_css_colors : array();
+		if ( ! isset( $registered[ $scheme ] ) ) {
+			update_user_option( get_current_user_id(), 'admin_color', 'fresh', true );
+			return;
+		}
+
+		$icon_colors = isset( $registered[ $scheme ]->icon_colors ) && is_array( $registered[ $scheme ]->icon_colors )
+			? $registered[ $scheme ]->icon_colors
+			: array();
+		if ( empty( $icon_colors['secondary'] ) ) {
+			update_user_option( get_current_user_id(), 'admin_color', 'fresh', true );
+		}
 	}
 
 	public function load_textdomain(): void {
